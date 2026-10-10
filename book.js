@@ -174,7 +174,11 @@ function fitAll(){
   });
 }
 if(document.fonts && document.fonts.ready) document.fonts.ready.then(function(){ fitAll(); });
-size(); window.addEventListener("resize", function(){ size(); fx.resize(); });
+function relayout(){
+  if(activeTurn){ var to = activeTurn.to; cancelTurn(); settle(to, false); }
+  size(); fx.resize();
+}
+size(); window.addEventListener("resize", relayout);
 
 /* ---------- living art (particles) ---------- */
 var fx = (function(){
@@ -249,7 +253,7 @@ function firstArt(i){
 }
 
 /* ---------- page turning ---------- */
-var cur = 0, busy = false;
+var cur = 0, busy = false, activeTurn = null;
 var countEl = document.getElementById("count"), announce = document.getElementById("announce");
 var prevBtn = document.getElementById("prevBtn"), nextBtn = document.getElementById("nextBtn");
 function pageName(i){
@@ -274,10 +278,20 @@ function cloneFor(el){
   c.removeAttribute("id");
   Array.prototype.forEach.call(c.querySelectorAll("[id]"), function(n){ n.removeAttribute("id"); });
   Array.prototype.forEach.call(c.querySelectorAll("video"), function(v){ v.removeAttribute("autoplay"); });
+  Array.prototype.forEach.call(c.querySelectorAll(".layer:not(.show)"), function(l){ l.remove(); });
   return c;
 }
+function cancelTurn(){
+  if(!activeTurn) return;
+  var turn = activeTurn; activeTurn = null; busy = false;
+  turn.cancelled = true;
+  turn.animations.forEach(function(a){ a.cancel(); });
+  turn.stage.remove();
+}
 function animate(el, frames, ms){
-  return el.animate(frames, {duration:ms, easing:"cubic-bezier(.45,.05,.3,1)", fill:"forwards"}).finished;
+  var a = el.animate(frames, {duration:ms, easing:"cubic-bezier(.45,.05,.3,1)", fill:"forwards"});
+  activeTurn.animations.push(a);
+  return a.finished;
 }
 function turnTo(to, opts){
   opts = opts || {};
@@ -291,10 +305,45 @@ function turnTo(to, opts){
   // prepare destination art so clones show it
   B.hidden = false; B.style.visibility = "hidden";
   var f = firstArt(to); showArt(B, f.key, false);
+  // Finish entrance effects before copying the destination, not after the turn.
+  if(B.getAnimations) B.getAnimations({subtree:true}).forEach(function(a){
+    if(a.effect.getTiming().iterations !== Infinity) a.finish();
+  });
   var stage = document.createElement("div"); stage.className = "flip"; stage.setAttribute("aria-hidden", "true");
-  var ms = 1100, jobs = [];
-  function half(cls, page){ var d = document.createElement("div"); d.className = "half " + cls; d.appendChild(cloneFor(page)); var sh = document.createElement("div"); sh.className = "shadow"; d.appendChild(sh); stage.appendChild(d); return d; }
-  function face(leaf, cls, page){ var d = document.createElement("div"); d.className = "face " + cls; if(page) d.appendChild(cloneFor(page)); else { var p = document.createElement("div"); p.className = "page"; d.appendChild(p); } var sh = document.createElement("div"); sh.className = "shade"; d.appendChild(sh); leaf.appendChild(d); return d; }
+  stage.inert = true;
+  var turn = activeTurn = {stage:stage, animations:[], cancelled:false, to:to};
+  var ms = 600, jobs = [], scrolls = [];
+  function copy(page){
+    var c = cloneFor(page), source = page.querySelectorAll(".inner"), target = c.querySelectorAll(".inner");
+    Array.prototype.forEach.call(source, function(inner, i){ scrolls.push({el:target[i], top:inner.scrollTop}); });
+    return c;
+  }
+  function freezeCopy(root){
+    Array.prototype.forEach.call(root.querySelectorAll(".page"), function(page){
+      if(!page.getAnimations) return;
+      page.getAnimations({subtree:true}).forEach(function(a){
+        if(a.effect.getTiming().iterations === Infinity) a.pause(); else a.finish();
+      });
+    });
+  }
+  function mount(){
+    A.style.visibility = "hidden"; spreadsEl.appendChild(stage);
+    scrolls.forEach(function(s){ s.el.scrollTop = s.top; });
+    freezeCopy(stage);
+  }
+  function rotate(leaf, front, back, start, end, duration){
+    var mid = (start + end) / 2;
+    front.hidden = start !== 0; back.hidden = start === 0;
+    return animate(leaf, [{transform:"rotateY("+start+"deg)"}, {transform:"rotateY("+mid+"deg)"}], duration / 2).then(function(){
+      if(turn.cancelled) return;
+      // Hide the outgoing face explicitly; nested transforms can defeat backface culling.
+      front.hidden = end !== 0; back.hidden = end === 0;
+      freezeCopy(end === 0 ? front : back);
+      return animate(leaf, [{transform:"rotateY("+mid+"deg)"}, {transform:"rotateY("+end+"deg)"}], duration / 2);
+    });
+  }
+  function half(cls, page){ var d = document.createElement("div"); d.className = "half " + cls; d.appendChild(copy(page)); var sh = document.createElement("div"); sh.className = "shadow"; d.appendChild(sh); stage.appendChild(d); return d; }
+  function face(leaf, cls, page){ var d = document.createElement("div"); d.className = "face " + cls; if(page) d.appendChild(copy(page)); else { var p = document.createElement("div"); p.className = "page"; d.appendChild(p); } var sh = document.createElement("div"); sh.className = "shade"; d.appendChild(sh); leaf.appendChild(d); return d; }
   if(wide.matches){
     var Lsrc = fwd ? A : B, Rsrc = fwd ? B : A;
     var uL = half("under-l", Lsrc.querySelector(".page.left"));
@@ -303,7 +352,7 @@ function turnTo(to, opts){
     var front = face(leaf, "recto", fwd ? A.querySelector(".page.right") : A.querySelector(".page.left"));
     var back = face(leaf, "verso", fwd ? B.querySelector(".page.left") : B.querySelector(".page.right"));
     stage.appendChild(leaf);
-    A.style.visibility = "hidden"; spreadsEl.appendChild(stage);
+    mount();
     var dirDeg = fwd ? -180 : 180;
     var fs = front.querySelector(".shade"), bs = back.querySelector(".shade");
     fs.style.background = fwd ? "linear-gradient(to left, rgba(40,30,10,.35), rgba(40,30,10,0) 70%)" : "linear-gradient(to right, rgba(40,30,10,.35), rgba(40,30,10,0) 70%)";
@@ -312,10 +361,7 @@ function turnTo(to, opts){
     cast.style.background = fwd ? "linear-gradient(to right, rgba(30,22,8,.45), rgba(30,22,8,0) 60%)" : "linear-gradient(to left, rgba(30,22,8,.45), rgba(30,22,8,0) 60%)";
     var land = (fwd ? uL : uR).querySelector(".shadow");
     land.style.background = fwd ? "linear-gradient(to left, rgba(30,22,8,.35), rgba(30,22,8,0) 55%)" : "linear-gradient(to right, rgba(30,22,8,.35), rgba(30,22,8,0) 55%)";
-    jobs.push(animate(leaf, [
-      {transform:"rotateY(0deg)"},
-      {transform:"rotateY(" + (dirDeg*0.5) + "deg) translateZ(18px)", offset:.5},
-      {transform:"rotateY(" + dirDeg + "deg)"}], ms));
+    jobs.push(rotate(leaf, front, back, 0, dirDeg, ms));
     jobs.push(animate(fs, [{opacity:0},{opacity:1}], ms*0.5));
     jobs.push(animate(bs, [{opacity:1},{opacity:1, offset:.5},{opacity:0}], ms));
     jobs.push(animate(cast, [{opacity:1},{opacity:.6, offset:.4},{opacity:0}], ms));
@@ -324,18 +370,23 @@ function turnTo(to, opts){
     var under = document.createElement("div"); under.className = "half solo"; stage.appendChild(under);
     var leaf2 = document.createElement("div"); leaf2.className = "leaf fwd solo"; leaf2.style.left = "0"; leaf2.style.transformOrigin = "left center";
     var topSpread = fwd ? A : B, bottomSpread = fwd ? B : A;
-    var u = cloneFor(bottomSpread); u.hidden = false; u.style.visibility = ""; under.appendChild(u);
-    var fr = document.createElement("div"); fr.className = "face recto"; var t = cloneFor(topSpread); t.hidden = false; t.style.visibility = ""; fr.appendChild(t);
+    var u = copy(bottomSpread); u.hidden = false; u.style.visibility = ""; under.appendChild(u);
+    var fr = document.createElement("div"); fr.className = "face recto"; var t = copy(topSpread); t.hidden = false; t.style.visibility = ""; fr.appendChild(t);
     var sh2 = document.createElement("div"); sh2.className = "shade"; sh2.style.background = "linear-gradient(to left, rgba(40,30,10,.4), rgba(40,30,10,0) 70%)"; fr.appendChild(sh2); leaf2.appendChild(fr);
-    face(leaf2, "verso", null);
+    var bk = face(leaf2, "verso", null);
     stage.appendChild(leaf2);
-    A.style.visibility = "hidden"; spreadsEl.appendChild(stage);
+    mount();
     var k0 = fwd ? 0 : -180, k1 = fwd ? -180 : 0;
-    jobs.push(animate(leaf2, [{transform:"rotateY("+k0+"deg)"},{transform:"rotateY("+((k0+k1)/2)+"deg) translateZ(30px)"},{transform:"rotateY("+k1+"deg)"}], ms*0.9));
+    jobs.push(rotate(leaf2, fr, bk, k0, k1, ms));
     jobs.push(animate(sh2, fwd ? [{opacity:0},{opacity:1}] : [{opacity:1},{opacity:0}], ms*0.9));
   }
   return Promise.all(jobs).then(function(){
-    stage.remove(); busy = false; settle(to, !opts.auto);
+    if(turn.cancelled) return;
+    cancelTurn(); settle(to, !opts.auto);
+  }, function(error){
+    if(turn.cancelled) return;
+    console.error("Page turn animation failed", error);
+    cancelTurn(); settle(to, !opts.auto);
   });
 }
 prevBtn.addEventListener("click", function(){ hop(cur - 1); });
@@ -569,10 +620,10 @@ LewBook.playIntro = function(){
   if(!SEQ.length) return false;
   introDone = true; queue = SEQ.slice(); pos = 0; playing = true; paused = false; setBtn(true); playCurrent(); return true;
 };
-LewBook.relayout = function(){ size(); fx.resize(); };
+LewBook.relayout = relayout;
 LewBook.jump = function(key){
   var i = key === "end" ? PAGES.length - 1 : PAGES.map(function(p){ return p.key; }).indexOf(key);
-  if(i < 0) return false; finish(); queue = []; busy = false; settle(i, false); return true;
+  if(i < 0) return false; finish(); queue = []; cancelTurn(); settle(i, false); return true;
 };
 
 } };

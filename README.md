@@ -26,4 +26,6 @@ Run `python3 -m http.server 8000 --bind 127.0.0.1` from the repository root, the
 - `book-data.js`: chapters, text, audio and picture list. `book-all.js`: the "All his answers" pages
 - `assets/audio`, `assets/img`, `assets/hand`: recordings, pictures, and his handwriting strokes
 
+Page turns use static copies of the current artwork and text so picture and handwriting animations do not replay during the flip. Chapter jumps clear any in-progress turn, resizing completes the requested turn, and reduced-motion preferences skip the flip entirely.
+
 Opening `index.html` straight from your computer may block the audio; use the local preview server or, once published, the GitHub Pages link.
