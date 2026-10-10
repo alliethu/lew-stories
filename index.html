@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<title>Not a Storyteller, As a Rule: The Stories of Lew Etcoff</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;600&amp;family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&amp;family=Nothing+You+Could+Do&amp;family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,600;1,7..72,400&amp;display=swap" rel="stylesheet">
+<link rel="stylesheet" href="book.css">
+</helmet>
+<div class="app">
+  <header class="bar" aria-hidden="true"></header>
+  <main class="stage" id="main">
+    <h1 class="vh">Not a Storyteller, As a Rule: The Stories of Lew Etcoff</h1>
+    <div class="cover" style="clip-path: inset(-80px -80px -120px 50%)">
+      <div class="spreads" id="spreads"></div>
+      <div class="ribbon" aria-hidden="true"></div>
+      <div id="closedCover" aria-hidden="true" style="position: absolute; top: 0; bottom: 0; left: 50%; width: 50%; z-index: 20; transform-origin: 0 50%; transform-style: preserve-3d; transform: perspective(2600px) rotateY(0deg)">
+        <div style="position: absolute; inset: 0; backface-visibility: hidden; -webkit-backface-visibility: hidden; border-radius: 3px 10px 10px 3px; background-color: var(--cloth); background-image: linear-gradient(90deg, rgba(0,0,0,.28), rgba(0,0,0,0) 5%, rgba(255,255,255,.06) 7%, rgba(0,0,0,0) 10%), repeating-linear-gradient(0deg, rgba(255,255,255,.035) 0 1px, transparent 1px 3px), repeating-linear-gradient(90deg, rgba(0,0,0,.06) 0 1px, transparent 1px 3px), radial-gradient(120% 140% at 30% 20%, rgba(255,255,255,.10), rgba(0,0,0,.2)); box-shadow: 0 18px 40px -12px rgba(30,25,15,.5), inset 0 0 0 1px rgba(255,255,255,.05); display: grid; place-items: center">
+          <div style="width: 66%; margin-top: -14%; padding: 7% 7% 6%; background: #f4ead3; box-shadow: inset 0 0 0 1px rgba(60,45,20,.25), inset 0 0 0 5px #f4ead3, inset 0 0 0 6px rgba(60,45,20,.18), 0 1px 2px rgba(0,0,0,.3); display: flex; flex-direction: column; align-items: center; gap: .5em; text-align: center">
+            <div style="font-family: 'Nothing You Could Do', cursive; color: #1a6fa8; font-size: calc(var(--bw, 1200px) * .03); line-height: 1.15">Not a Storyteller,<br>As a Rule</div>
+            <div style="font-family: Literata, Georgia, serif; font-style: italic; color: #625c51; font-size: calc(var(--bw, 1200px) * .011)">The stories of Lew Etcoff</div>
+          </div>
+          <button class="btn solid" id="coRead" type="button" style="position: absolute; left: 0; right: 0; margin: 0 auto; width: max-content; bottom: 11%; visibility: hidden; font-size: 1.05rem; min-height: 54px; padding: 0 1.7em; background: #f4ead3; color: #1e3d70; border-color: #f4ead3; box-shadow: 0 6px 16px -6px rgba(0,0,0,.5)"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 2.5v11l9-5.5z" fill="currentColor"></path></svg>Read the book</button>
+        </div>
+        <div style="position: absolute; inset: 0; backface-visibility: hidden; -webkit-backface-visibility: hidden; transform: rotateY(180deg); border-radius: 10px 3px 3px 10px; background: color-mix(in srgb, var(--paper) 88%, #b9a57c 12%); box-shadow: inset -12px 0 22px -12px rgba(60,45,20,.35)"></div>
+      </div>
+    </div>
+    <nav class="nav lbar" aria-label="Listening controls">
+      <button class="lb-play" id="playBtn" type="button" aria-pressed="false"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 2.5v11l9-5.5z" fill="currentColor"></path></svg><span class="vh">Play</span></button>
+      <div class="lb-mid">
+        <p class="lb-now"><span id="chName">Not a Storyteller, As a Rule</span><span class="lb-chn" id="chNum"></span><span class="lb-state" id="nowTitle" aria-live="polite"></span></p>
+        <div class="lb-segs" id="chSegs"></div>
+      </div>
+      <button class="lb-arrow" id="prevBtn" type="button"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M10.6 1.8 4.4 8l6.2 6.2 1.4-1.4L7.2 8l4.8-4.8z" fill="currentColor"></path></svg><span class="vh">Previous page</span></button>
+      <button class="lb-arrow" id="nextBtn" type="button"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M5.4 1.8 11.6 8l-6.2 6.2L4 12.8 8.8 8 4 3.2z" fill="currentColor"></path></svg><span class="vh">Next page</span></button>
+      <button class="lb-speed" id="spdBtn" type="button" title="Reading speed">1×</button>
+      <button class="lb-chapters" id="chBtn" type="button" aria-expanded="false" aria-controls="chMenu">Chapters</button>
+      <div class="lb-menu" id="chMenu" hidden=""></div>
+      <span class="vh" id="count" aria-hidden="true"></span>
+    </nav>
+    <p class="vh" id="announce" aria-live="polite"></p>
+  </main>
+  <dialog class="lightbox" id="lightbox" aria-label="Picture">
+    <button class="btn lb-close" type="button" id="lbClose">Close</button>
+    <div class="lb-stage" id="lbStage"></div>
+    <p class="lb-cap" id="lbCap"></p>
+  </dialog>
+  <div id="coldOpen" role="dialog" aria-modal="true" aria-label="Opening" style="position: fixed; inset: 0; z-index: 100; overflow: hidden; background: #efe2c4; transform-origin: 60% 55%">
+    <img src="assets/img/0-00_title-pen.png" alt="Watercolor of his fountain pen resting on cream writing paper" style="position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 68% 50%">
+    <div id="coSheet" style="position: absolute; left: 6vw; top: 13vh; right: 6vw; bottom: 22vh">
+      <p id="coTitle" style="margin: 0; display: flex; flex-direction: column; align-items: flex-start; gap: .05em; font-family: 'Nothing You Could Do', cursive; font-size: clamp(1.9rem, 4.8vw, 5.4rem); line-height: 1.25; color: var(--pen); transform: rotate(-2.5deg); transform-origin: 0 0">
+        <span class="co-l" style="display: block; white-space: nowrap; clip-path: inset(-30% 100% -50% -4%)">Not a Storyteller,</span>
+        <span class="co-l" style="display: block; white-space: nowrap; padding-left: .6em; clip-path: inset(-30% 100% -50% -4%)">As a Rule</span>
+      </p>
+      <p id="coBy" style="margin: clamp(1rem, 3.4vh, 2.4rem) 0 .3rem 1.4vw; font-family: Literata, Georgia, serif; font-style: italic; font-size: clamp(.95rem, 1.35vw, 1.3rem); color: #5a5246; opacity: 0">The stories of</p>
+      <div id="coSig" style="width: clamp(15rem, 27vw, 30rem); margin-left: .4vw"></div>
+      <div id="coNib" aria-hidden="true" style="position: absolute; left: 0; top: 0; width: 7px; height: 7px; margin: -3px 0 0 -3px; border-radius: 50%; background: var(--pen); box-shadow: 0 0 0 2px rgba(26,111,168,.18); opacity: 0; pointer-events: none"></div>
+    </div>
+    <div style="position: absolute; left: 6vw; bottom: 7vh; display: flex; gap: .7rem; flex-wrap: wrap; align-items: center">
+      <button class="btn solid" id="coBegin" type="button" style="font-size: 1rem; min-height: 52px; padding: 0 1.6em"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 2.5v11l9-5.5z" fill="currentColor"></path></svg>Begin</button>
+    </div>
+  </div>
+  </div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;coldOpen&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Opening&quot;},&quot;pictureLayout&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;full&quot;,&quot;framed&quot;],&quot;default&quot;:&quot;framed&quot;,&quot;tsType&quot;:&quot;'full' | 'framed'&quot;,&quot;section&quot;:&quot;Pictures&quot;},&quot;theme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;auto&quot;,&quot;light&quot;,&quot;dark&quot;],&quot;default&quot;:&quot;light&quot;,&quot;tsType&quot;:&quot;'auto' | 'light' | 'dark'&quot;,&quot;section&quot;:&quot;Theme&quot;}}">
+class Component extends DCLogic {
+  componentDidMount() { this.applyProps(); this.boot(); }
+  componentDidUpdate() { this.applyProps(); }
+  applyProps() {
+    const r = document.documentElement;
+    r.setAttribute('data-layout', this.props.pictureLayout ?? 'framed');
+    const t = this.props.theme ?? 'light';
+    if (t === 'auto') r.removeAttribute('data-theme'); else r.setAttribute('data-theme', t);
+    if (window.LewBook && window.LewBook.relayout) window.LewBook.relayout();
+  }
+  load(src) {
+    return new Promise((res, rej) => { const s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = rej; document.head.appendChild(s); });
+  }
+  async boot() {
+    if (!window.BOOK) await this.load('book-data.js');
+    if (!window.BOOK_ALL) await this.load('book-all.js').catch(() => {});
+    if (!window.LewBook) await this.load('book.js');
+    window.LewBook.init();
+    if (!window.ColdOpen) await this.load('coldopen.js');
+    const h = (location.hash || '').slice(1);
+    const deep = /^(title|ch\d+|end|all1)$/.test(h);
+    window.ColdOpen.init({ enabled: deep ? false : (this.props.coldOpen ?? true) });
+    if (deep) this.jump(h);
+  }
+  jump(key) {
+    if (!window.LewBook || !window.LewBook.jump) return;
+    if (window.ColdOpen && window.ColdOpen.dismiss) window.ColdOpen.dismiss();
+    window.LewBook.jump(key);
+    try { history.replaceState(null, '', '#' + key); } catch (e) {}
+  }
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>
