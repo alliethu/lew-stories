@@ -11,7 +11,7 @@ const audioSource = source.slice(
   source.indexOf('/* ---------- listening bar:')
 );
 
-function fixture() {
+function fixture(pages = [{key: 'title'}, {key: 'ch1'}, {key: 'p1'}, {key: 'answers'}]) {
   let now = 0, timerId = 0, blobId = 0;
   const timers = new Map(), players = [], requests = [], revoked = [], errors = [];
   const node = () => ({
@@ -60,10 +60,10 @@ function fixture() {
     },
     URL: {createObjectURL: () => `blob:${++blobId}`, revokeObjectURL: url => revoked.push(url)},
     console: {error: (...args) => errors.push(args), warn: (...args) => errors.push(args)},
-    PAGES: [{key: 'title'}, {key: 'ch1'}, {key: 'p1'}, {key: 'answers'}],
+    PAGES: pages,
     CLIPS: clips, AUDIO: {a: 'a.mp3', b: 'b.mp3', c: 'c.mp3'}, B: {AUDIO_END: {}},
     DUR: {}, waitStart: null, cur: 0, busy: false, activeTurn: null, reduce: true,
-    spreads: Array.from({length: 4}, () => ({querySelector: () => node()})),
+    spreads: Array.from({length: pages.length}, () => ({querySelector: () => node()})),
     loadArt() {}, updateBar() {}, clearHL() {},
     art: [], showArt(spread, key) { context.art.push(key); },
     turnTo(to) { context.cur = to; return Promise.resolve(); }
@@ -165,10 +165,41 @@ test('pausing during a pending page turn does not start delayed audio', async ()
 
 test('chapter opener pauses preserve the remaining hold instead of restarting it', async () => {
   const f = fixture(), c = f.context;
-  c.startFrom(1); await f.flush(); await f.advance(2000);
+  c.startFrom(1); await f.flush(); await f.advance(500);
   c.pausePlay(); await f.advance(10000); c.resumePlay(); await f.flush();
-  await f.advance(3499); assert.equal(f.players[0].playCalls, 0);
+  await f.advance(1499); assert.equal(f.players[0].playCalls, 0);
   await f.advance(1); assert.equal(c.currentItem.id, 'c');
+});
+
+test('chapter openers continue to narration after exactly two seconds', async () => {
+  const f = fixture(), c = f.context;
+  c.startFrom(1); await f.flush();
+  await f.advance(1999); assert.equal(f.players[0].playCalls, 0);
+  await f.advance(1); assert.equal(c.currentItem.id, 'c');
+  assert.equal(f.players[0].playCalls, 1);
+});
+
+test('all nine chapter openers show their number and title, retain artwork, and have two-second holds', () => {
+  const context = vm.createContext({window: {}});
+  vm.runInContext(readFileSync(resolve(root, 'book-data.js'), 'utf8'), context);
+  const book = context.window.BOOK, c = fixture(book.PAGES).context;
+  const artwork = ['house', '2-00', '3-00', '4-00', '5-00', '6-op', '7-op', '8-op', '9-01'];
+  for (let n = 1; n <= 9; n++) {
+    const index = book.PAGES.findIndex(page => page.key === `ch${n}`), page = book.PAGES[index];
+    assert.ok(page, `Missing chapter ${n}`);
+    const opener = page.html.match(/^<div class="opener"><p class="label">Chapter (\d+)<\/p><h2 class="h" tabindex="-1">[^<]+<\/h2><\/div>$/);
+    assert.ok(opener, `Chapter ${n} should contain only its number and title`);
+    assert.equal(Number(opener[1]), n);
+    assert.equal(page.art, artwork[n - 1]);
+    assert.ok(book.ART[page.art], `Missing chapter ${n} artwork`);
+    assert.equal(c.SEQ.find(item => item.page === index).wait, 2000);
+  }
+  const closingIndex = book.PAGES.findIndex(page => page.key === 'ch10');
+  assert.match(book.PAGES[closingIndex].html, /Happy 75th/);
+  assert.match(book.PAGES[closingIndex].html, /With love, from all of us/);
+  assert.match(book.PAGES[closingIndex].html, /There\u2019s more to explore\. Keep reading for more of his original written responses\./);
+  assert.match(book.PAGES[closingIndex].html, /<a href="#all1">Read his responses \u2192<\/a>/);
+  assert.equal(c.SEQ.find(item => item.page === closingIndex).wait, 5500);
 });
 
 test('stopping while a manual page turn is pending cannot restart narration', async () => {

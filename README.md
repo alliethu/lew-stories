@@ -30,6 +30,8 @@ Page turns use static copies of the current artwork and text so picture and hand
 
 Narration uses one reusable audio player and preloads only the next recording. Artwork loads on demand rather than downloading the entire book upfront. Recording durations are saved in `book-data.js`; update `AUDIO_DURATIONS` when replacing a recording. Buffering and playback errors appear in the listening bar, and Play retries a failed recording.
 
+The nine chapter openers show their chapter number and title alongside the existing artwork, without pull quotes or supporting text. Autoplay gives each opener a two-second pause before continuing to the recorded story. The birthday closing keeps its original message and longer pause, with a quiet invitation and direct link to his written responses.
+
 Small screens use stacked artwork and text; short landscape screens use side-by-side pages. Long passages scroll at a readable font size rather than shrinking to fit. Playback controls wrap on narrow screens, including loading and error messages, and enlarged pictures and full answers remain scrollable with larger text.
 
 Run `node --test tests/*.test.js` for playback and responsive sizing regressions. The deployment workflow runs these checks before publishing. When changing application scripts or styles, update their versions in `index.html` to prevent stale browser caches.
