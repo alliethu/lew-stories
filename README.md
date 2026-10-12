@@ -28,4 +28,8 @@ Run `python3 -m http.server 8000 --bind 127.0.0.1` from the repository root, the
 
 Page turns use static copies of the current artwork and text so picture and handwriting animations do not replay during the flip. Chapter jumps clear any in-progress turn, resizing completes the requested turn, and reduced-motion preferences skip the flip entirely.
 
+Narration uses one reusable audio player and preloads only the next recording. Artwork loads on demand rather than downloading the entire book upfront. Recording durations are saved in `book-data.js`; update `AUDIO_DURATIONS` when replacing a recording. Buffering and playback errors appear in the listening bar, and Play retries a failed recording.
+
+Run `node --test tests/audio.test.js` for playback regressions. The deployment workflow runs these checks before publishing. When changing application scripts, update the version in `index.html`'s `load()` method to prevent stale browser caches.
+
 Opening `index.html` straight from your computer may block the audio; use the local preview server or, once published, the GitHub Pages link.

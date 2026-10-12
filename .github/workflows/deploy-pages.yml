@@ -24,6 +24,12 @@ jobs:
     steps:
       - name: Check out website
         uses: actions/checkout@v4
+      - name: Check book and narration
+        run: |
+          node --check book.js
+          node --check book-data.js
+          node --check coldopen.js
+          node --test tests/audio.test.js
       - name: Configure Pages
         uses: actions/configure-pages@v5
       - name: Assemble website
