@@ -7,6 +7,20 @@ const vm = require('node:vm');
 const source = readFileSync(resolve(__dirname, '../book.js'), 'utf8');
 const sizing = source.slice(source.indexOf('/* ---------- sizing'), source.indexOf('/* ---------- living art'));
 
+test('every chapter answer summary separates the question and Read label', () => {
+  const context = vm.createContext({window: {}});
+  vm.runInContext(readFileSync(resolve(__dirname, '../book-data.js'), 'utf8'), context);
+  const book = context.window.BOOK;
+  const templates = [book.FULL_ANSWERS, ...Array.from({length: 8}, (_, i) => book[`FULL_CH${i + 2}`])];
+  for (const template of templates) {
+    const summaries = [...template.matchAll(/<summary>(.*?)<\/summary>/gs)];
+    assert.ok(summaries.length);
+    for (const [, summary] of summaries) {
+      assert.match(summary.trim(), /^<span class="q">[^<]+<\/span>\s*<span class="more">Read(?: \(shortened\))? \u2192<\/span>$/);
+    }
+  }
+});
+
 function fixture(width, height, wide) {
   const properties = {};
   const removed = [];
