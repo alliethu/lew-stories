@@ -453,7 +453,7 @@ var SEQ = [];
 PAGES.forEach(function(pg, i){
   var cl = CLIPS.filter(function(c){ return c.page === i; });
   if(cl.length) SEQ = SEQ.concat(cl);
-  else if(/^ch\d/.test(pg.key)) SEQ.push({ page:i, wait:5500, title:(spreads[i].querySelector(".h") || {}).textContent || "" });
+  else if(/^ch\d/.test(pg.key)) SEQ.push({ page:i, wait:/^ch[1-9]$/.test(pg.key) ? 2000 : 5500, title:(spreads[i].querySelector(".h") || {}).textContent || "" });
 });
 var waitT = 0;
 var introDone = false, queue = [], pos = 0, playing = false, paused = false, audio = new Audio(), token = 0;

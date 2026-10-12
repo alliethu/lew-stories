@@ -90,7 +90,7 @@ var PAGES = [
     '<blockquote class="pull small"><p>\u201cI\u2019m not a storyteller, as a rule.\u201d</p></blockquote><p class="frame-line">A modest man who turns out to have plenty of stories.</p>'+
     '<p class="intro clip" data-clip="0-00">Every week for a year, Lew answered a question about his life. These are some of his answers. Read them, listen to them, or both.</p></div>'},
   {key:"ch1", art:"house", run:"", html:
-    '<div class="opener"><p class="label">Chapter 1</p><h2 class="h" tabindex="-1">Isabell Circle</h2><blockquote class="pull"><p>\u201cAs you can tell, we had a super time as children.\u201d</p></blockquote><p class="frame-line">The kid who invented games, and the friends he still talks to every Monday.</p></div>'},
+    '<div class="opener"><p class="label">Chapter 1</p><h2 class="h" tabindex="-1">Isabell Circle</h2></div>'},
   {key:"p1", title:"Randolph, Massachusetts", clips:[
     {id:"1-01", art:"1-01", text:"When I look back on my life, I believe that I was happiest during elementary school, when I had a lot of same-age friends to play with on Isabell Circle in Randolph, Mass."}]},
   {key:"p2", title:"The game in the woods", clips:[
@@ -112,7 +112,7 @@ var PAGES = [
     {id:"1-11", art:"1-11", text:"I loved my neighborhood and the boys I made friends with, all of whom I still talk with every Monday at 10 a.m. Pacific, 1 p.m. Eastern."}]},
   {key:"answers", art:"end", run:"Isabell Circle", html:'<h2 class="h" tabindex="-1">Read his full answers</h2><p style="color:var(--muted);font-size:.88em;margin:0 0 .8rem">This chapter draws on two of his answers. Here they are in full, with typos lightly corrected.</p>__FULLANS__'},
   {key:"ch2", art:"2-00", run:"", html:
-    '<div class="opener"><p class="label">Chapter 2</p><h2 class="h" tabindex="-1">Where He Came From</h2><blockquote class="pull"><p>\u201cThe apple doesn\u2019t fall far from the tree, now does it?\u201d</p></blockquote><p class="frame-line">What he inherited from each parent, the good and the quirky.</p></div>'},
+    '<div class="opener"><p class="label">Chapter 2</p><h2 class="h" tabindex="-1">Where He Came From</h2></div>'},
   {key:"q1", ch:"Chapter 2: Where He Came From", title:"His mother", clips:[
     {id:"2-01", art:"2-01", text:"My mother had an easy and warm smile, laughed a lot, was very loving, and always made a warm home for the family. She cleaned the floors on her hands and knees, cooked every meal for us, and worked full-time. She never gave up and always gave her very best. What I learned to copy from my mom was her hard work ethic, despite her worries and financial stresses."}]},
   {key:"q2", ch:"Chapter 2: Where He Came From", title:"Charlie", clips:[
@@ -123,7 +123,7 @@ var PAGES = [
     {id:"2-05", art:"2-05", push:true, text:"This may have started when my father sent me videotapes of only Celtics wins. He taped over the games they lost. Ha ha ha! The apple doesn't fall far from the tree, now does it?"}]},
   {key:"answers2", art:"2-06", run:"Where He Came From", html:'<h2 class="h" tabindex="-1">Read his full answers</h2><p style="color:var(--muted);font-size:.88em;margin:0 0 .8rem">This chapter draws on four of his answers. Two are shortened here; the rest are in full, with typos lightly corrected.</p>__FULLANS__', full:"CH2"},
   {key:"ch3", art:"3-00", run:"", html:
-    '<div class="opener"><p class="label">Chapter 3</p><h2 class="h" tabindex="-1">The Hippie and the Singer</h2><blockquote class="pull"><p>\u201cWhat a trip!\u201d</p></blockquote><p class="frame-line">Finding his voice through music and humor.</p></div>'},
+    '<div class="opener"><p class="label">Chapter 3</p><h2 class="h" tabindex="-1">The Hippie and the Singer</h2></div>'},
   {key:"r1", ch:"Chapter 3: The Hippie and the Singer", title:"College", clips:[
     {id:"3-01", art:"3-01", text:"Once I got to college, I conformed by becoming a hippie. Long hair, mustache, crummy beard, bell bottoms, and guitar playing. Being a hippie necessitated wearing a ponytail too, which I enjoyed."}]},
   {key:"r2", ch:"Chapter 3: The Hippie and the Singer", title:"Jerusalem", clips:[
@@ -136,7 +136,7 @@ var PAGES = [
     {id:"3-06", art:"3-06", text:"The hippie fad lasted till age 21, when my hair got shorter. No more scraggly beard. I was off to grad school, still a serious student."}]},
   {key:"answers3", art:"3-05", run:"The Hippie and the Singer", html:'<h2 class="h" tabindex="-1">Read his full answers</h2><p style="color:var(--muted);font-size:.88em;margin:0 0 .8rem">This chapter draws on two of his answers. Both are shortened here, with typos lightly corrected.</p>__FULLANS__', full:"CH3"},
   {key:"ch4", art:"4-00", run:"", html:
-    '<div class="opener"><p class="label">Chapter 4</p><h2 class="h" tabindex="-1">The Bravest Thing</h2><blockquote class="pull"><p>\u201cIt wasn\u2019t easy or smooth. But I did it.\u201d</p></blockquote><p class="frame-line">Courage he had to choose, again and again.</p></div>'},
+    '<div class="opener"><p class="label">Chapter 4</p><h2 class="h" tabindex="-1">The Bravest Thing</h2></div>'},
   {key:"b1", ch:"Chapter 4: The Bravest Thing", title:"Leaving Boston", clips:[
     {id:"4-01", art:"4-01b", text:"Undoubtedly, leaving family and friends and Boston to go out on my own to Toledo, Ohio, was the bravest thing I ever did. I had suffered separation anxiety as a child, and I forced myself to leave everybody I cared about and everything I knew in order to overcome that fear. I didn't know how to cook, do laundry, or anything else to live on my own. It wasn't easy or smooth. But I did it."}]},
   {key:"b2", ch:"Chapter 4: The Bravest Thing", title:"Toledo", clips:[
@@ -149,7 +149,7 @@ var PAGES = [
     {id:"4-06", art:"4-01", text:"All of these decisions were made possible by the self-confidence I gained leaving Boston on my own."}]},
   {key:"answers4", art:"4-07", run:"The Bravest Thing", html:'<h2 class="h" tabindex="-1">Read his full answers</h2><p style="color:var(--muted);font-size:.88em;margin:0 0 .8rem">This chapter draws on four of his answers. Three are shortened here; one is in full. Typos lightly corrected.</p>__FULLANS__', full:"CH4"},
   {key:"ch5", art:"5-00", run:"", html:
-    '<div class="opener"><p class="label">Chapter 5</p><h2 class="h" tabindex="-1">The Helper</h2><blockquote class="pull"><p>\u201cI always gave everything I had to every patient I saw.\u201d</p></blockquote><p class="frame-line">A career spent helping kids.</p></div>'},
+    '<div class="opener"><p class="label">Chapter 5</p><h2 class="h" tabindex="-1">The Helper</h2></div>'},
   {key:"h1", ch:"Chapter 5: The Helper", title:"Las Vegas", clips:[
     {id:"5-01", art:"5-01", text:"I never imagined living my life in Las Vegas, but it turned out to be a great place for me to start my professional career."}]},
   {key:"h1b", ch:"Chapter 5: The Helper", title:"Helping children", clips:[
@@ -160,7 +160,7 @@ var PAGES = [
     {id:"5-04", art:"5-04", text:"In 2020, I won the James Mikawa Leadership Award from the Nevada Psychological Association, for my many years evaluating children and teens, and my work with attorneys and the courts. This award made me feel very, very good."}]},
   {key:"answers5", art:"5-05", run:"The Helper", html:'<h2 class="h" tabindex="-1">Read his full answers</h2><p style="color:var(--muted);font-size:.88em;margin:0 0 .8rem">This chapter draws on four of his answers. One is shortened here; the rest are in full, with typos lightly corrected.</p>__FULLANS__', full:"CH5"},
   {key:"ch6", art:"6-op", run:"", html:
-    '<div class="opener"><p class="label">Chapter 6</p><h2 class="h" tabindex="-1">Dad</h2><blockquote class="pull"><p>\u201cI loved being a dad.\u201d</p></blockquote><p class="frame-line">The fun, gentle parent. Mom ran the rules.</p></div>'},
+    '<div class="opener"><p class="label">Chapter 6</p><h2 class="h" tabindex="-1">Dad</h2></div>'},
   {key:"d1", ch:"Chapter 6: Dad", title:"Mom", clips:[
     {id:"6-00", art:"6-00", text:"I am very, very fortunate to have married such a wonderful, loving woman. She is my best friend. We get along so well, and she enriches my life."}]},
   {key:"d2", ch:"Chapter 6: Dad", title:"Jennifer", clips:[
@@ -186,7 +186,7 @@ var PAGES = [
     {id:"6-12", art:"6-12", text:"What I hope I gave you as you were growing up, and still give you today, is my unconditional love."}]},
   {key:"answers6", art:"6-end", run:"Dad", html:'<h2 class="h" tabindex="-1">Read his full answers</h2><p style="color:var(--muted);font-size:.88em;margin:0 0 .8rem">This chapter draws on six of his answers. Three are shortened here; the rest are in full, with typos lightly corrected.</p>__FULLANS__', full:"CH6"},
   {key:"ch7", art:"7-op", run:"", html:
-    '<div class="opener"><p class="label">Chapter 7</p><h2 class="h" tabindex="-1">Papa</h2><blockquote class="pull"><p>\u201cI am blessed to be their playmate, though a whole lot older.\u201d</p></blockquote><p class="frame-line">Becoming the grandfather he never had.</p></div>'},
+    '<div class="opener"><p class="label">Chapter 7</p><h2 class="h" tabindex="-1">Papa</h2></div>'},
   {key:"g1", ch:"Chapter 7: Papa", title:"His grandfather", clips:[
     {id:"7-01", art:"7-01", text:"My grandfather wasn't involved with his grandchildren. He didn't play with me or do anything to get to know me. So I make sure that my grandkids will have a lot more fond memories of me."}]},
   {key:"g2", ch:"Chapter 7: Papa", title:"Three grandsons", clips:[
@@ -199,7 +199,7 @@ var PAGES = [
     {id:"7-06", art:"7-06", text:"When the boys tell me they don't want me to leave, that they love Mimi and Papa, that they want a sleepover, a hike, or to play the goofy games I invent for them… I forget my aches and pains in those moments, and feel wonderful."}]},
   {key:"answers7", art:"7-end", run:"Papa", html:'<h2 class="h" tabindex="-1">Read his full answers</h2><p style="color:var(--muted);font-size:.88em;margin:0 0 .8rem">This chapter draws on four of his answers. Two are shortened here; the rest are in full, with typos lightly corrected.</p>__FULLANS__', full:"CH7"},
   {key:"ch8", art:"8-op", run:"", html:
-    '<div class="opener"><p class="label">Chapter 8</p><h2 class="h" tabindex="-1">A Few of His Favorite Things</h2><blockquote class="pull"><p>\u201cThese are a few of my favorite things.\u201d</p></blockquote><p class="frame-line">Small pleasures, big enthusiasm.</p></div>'},
+    '<div class="opener"><p class="label">Chapter 8</p><h2 class="h" tabindex="-1">A Few of His Favorite Things</h2></div>'},
   {key:"f1", ch:"Chapter 8: A Few of His Favorite Things", title:"Pens and ink", clips:[
     {id:"8-01", art:"8-01", text:"Fountain pens. My favorites are Pelikans, of which I own eight at last count. Japanese inks: ama-iro and kon-peki. Good writing paper. Good coffee. Potato chips."}]},
   {key:"f2", ch:"Chapter 8: A Few of His Favorite Things", title:"Magnets!", clips:[
@@ -212,7 +212,7 @@ var PAGES = [
     {id:"8-06", art:"8-05", text:"These are a few of my favorite things, as the old song goes."}]},
   {key:"answers8", art:"8-end", run:"A Few of His Favorite Things", html:'<h2 class="h" tabindex="-1">Read his full answers</h2><p style="color:var(--muted);font-size:.88em;margin:0 0 .8rem">This chapter draws on two of his answers. One is shortened here; the other is in full. Typos lightly corrected.</p><div class="more-below">__FULLANS__</div>', full:"CH8"},
   {key:"ch9", art:"9-01", run:"", html:
-    '<div class="opener"><p class="label">Chapter 9</p><h2 class="h" tabindex="-1">What He\u2019d Tell You</h2><blockquote class="pull"><p>\u201cPause as often as possible to take in that beauty.\u201d</p></blockquote><p class="frame-line">What he\u2019d want you to carry with you.</p></div>'},
+    '<div class="opener"><p class="label">Chapter 9</p><h2 class="h" tabindex="-1">What He\u2019d Tell You</h2></div>'},
   {key:"w1", ch:"Chapter 9: What He'd Tell You", title:"The meaning of life", clips:[
     {id:"9-01", art:"9-01b", text:"I don't think there is a one-size-fits-all meaning in life. Each person determines their own. What is common to us all? To make the best out of our unique circumstances. To realize that there is beauty in the natural world around us all. Pause as often as possible to take in that beauty… the sky, the breeze, the animals, the trees, the roofs over our heads, and the people who love us."}]},
   {key:"w2", ch:"Chapter 9: What He'd Tell You", title:"For the boys", clips:[
@@ -224,7 +224,7 @@ var PAGES = [
     {id:"9-05", art:"9-05", text:"And remember that Papa loves you very much."}],
     after:"<aside class=\"note\" aria-label=\"Another of his answers\"><p class=\"q\"><span class=\"k\">Asked:</span> What would you consider your motto?</p><p class=\"a\">“Be kind, for everyone you meet is fighting a hard battle.”</p></aside>"},
   {key:"answers9", art:"9-end", run:"What He\u2019d Tell You", html:'<h2 class="h" tabindex="-1">Read his full answers</h2><p style="color:var(--muted);font-size:.88em;margin:0 0 .8rem">This chapter draws on three of his answers, all in full, with typos lightly corrected.</p>__FULLANS__', full:"CH9"},
-  {key:"ch10", art:"bday", run:"", html:'<div class="opener" style="align-items:flex-start"><h2 class="h" tabindex="-1" style="font-family:var(--hand);font-weight:600;color:var(--pen);font-size:3em;line-height:1.05">Happy 75th,<br>Dad and Papa.</h2><p class="frame-line">With love, from all of us.</p></div>'}
+  {key:"ch10", art:"bday", run:"", html:'<div class="opener" style="align-items:flex-start"><h2 class="h" tabindex="-1" style="font-family:var(--hand);font-weight:600;color:var(--pen);font-size:3em;line-height:1.05">Happy 75th,<br>Dad and Papa.</h2><p class="frame-line">With love, from all of us.</p><p class="frame-line">There\u2019s more to explore. Keep reading for more of his original written responses.</p><p class="frame-line"><a href="#all1">Read his responses \u2192</a></p></div>'}
 ];
 var CHAPTERS = [
   ["Isabell Circle", CH1_Q, 2],
