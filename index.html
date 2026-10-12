@@ -71,7 +71,20 @@
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props="{&quot;coldOpen&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Opening&quot;},&quot;pictureLayout&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;full&quot;,&quot;framed&quot;],&quot;default&quot;:&quot;framed&quot;,&quot;tsType&quot;:&quot;'full' | 'framed'&quot;,&quot;section&quot;:&quot;Pictures&quot;},&quot;theme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;auto&quot;,&quot;light&quot;,&quot;dark&quot;],&quot;default&quot;:&quot;light&quot;,&quot;tsType&quot;:&quot;'auto' | 'light' | 'dark'&quot;,&quot;section&quot;:&quot;Theme&quot;}}">
 class Component extends DCLogic {
-  componentDidMount() { this.applyProps(); this.boot(); }
+  componentDidMount() {
+    this.applyProps();
+    this.boot().catch(error => {
+      console.error('Book initialization failed', error);
+      const message = 'The book could not load. Refresh to retry.';
+      const byline = document.getElementById('coBy');
+      byline.textContent = message;
+      byline.style.opacity = '1';
+      document.getElementById('announce').textContent = message;
+      const button = document.getElementById('coBegin');
+      button.textContent = 'Refresh to retry';
+      button.onclick = () => location.reload();
+    });
+  }
   componentDidUpdate() { this.applyProps(); }
   applyProps() {
     const r = document.documentElement;
@@ -81,16 +94,16 @@ class Component extends DCLogic {
     if (window.LewBook && window.LewBook.relayout) window.LewBook.relayout();
   }
   load(src) {
-    return new Promise((res, rej) => { const s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = rej; document.head.appendChild(s); });
+    return new Promise((res, rej) => { const s = document.createElement('script'); s.src = src + '?v=20261012'; s.onload = res; s.onerror = () => rej(new Error('Could not load ' + src)); document.head.appendChild(s); });
   }
   async boot() {
     if (!window.BOOK) await this.load('book-data.js');
-    if (!window.BOOK_ALL) await this.load('book-all.js').catch(() => {});
+    if (!window.BOOK_ALL) await this.load('book-all.js');
     if (!window.LewBook) await this.load('book.js');
     window.LewBook.init();
     if (!window.ColdOpen) await this.load('coldopen.js');
     const h = (location.hash || '').slice(1);
-    const deep = /^(title|ch\d+|end|all1)$/.test(h);
+    const deep = h === 'end' || window.BOOK.PAGES.some(page => page.key === h);
     window.ColdOpen.init({ enabled: deep ? false : (this.props.coldOpen ?? true) });
     if (deep) this.jump(h);
   }

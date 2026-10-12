@@ -25,7 +25,7 @@ function esc(s){ return String(s).replace(/[&<>"]/g, function(c){ return {"&":"&
 
 function picHTML(a, label){
   if(a.src && a.type === "video") return '<video class="pic" src="'+a.src+'" muted loop playsinline preload="metadata"'+(a.poster?' poster="'+a.poster+'"':'')+'></video><span class="live">Live</span>';
-  if(a.src) return '<img class="pic" src="'+a.src+'" alt="">';
+  if(a.src) return '<img class="pic" src="'+a.src+'" alt="" loading="lazy" decoding="async">';
   var p = a.pal || ["#e6d6b6","#cfd9c4","#e2cfc9","#f1e8d6"];
   return '<div class="pic wash" style="--c1:'+p[0]+';--c2:'+p[1]+';--c3:'+p[2]+';--c0:'+p[3]+'"></div><span class="chip">Add: '+esc(label)+'</span>';
 }
@@ -35,7 +35,7 @@ function layerHTML(key){
   if(a.type === "album"){
     inner = '<div class="album'+(a.duo?' duo n'+a.items.length:'')+(a.pile?' pile':'')+'">' + a.items.map(function(it, i){
       var p = ["#e9d2ad","#d8c3a2","#cdb79a","#efe2c8"];
-      var ph = it.src ? '<img class="pic" src="'+it.src+'" alt="'+esc(it.alt||"")+'">' : '<div class="pic wash" style="--c1:'+p[0]+';--c2:'+p[1]+';--c3:'+p[2]+';--c0:'+p[3]+'"></div><span class="chip">'+esc(it.label)+'</span>';
+      var ph = it.src ? '<img class="pic" src="'+it.src+'" alt="'+esc(it.alt||"")+'" loading="lazy" decoding="async">' : '<div class="pic wash" style="--c1:'+p[0]+';--c2:'+p[1]+';--c3:'+p[2]+';--c0:'+p[3]+'"></div><span class="chip">'+esc(it.label)+'</span>';
       return '<div class="snap'+(it.cls?' '+it.cls:'')+'" style="--r:'+it.r+';--d:'+(0.25+i*0.35)+'s'+(it.ar?';--ar:'+it.ar:'')+'"><div class="ph">'+ph+'</div><span class="cap">'+esc(it.cap)+'</span></div>';
     }).join("") + '</div>';
   } else {
@@ -231,8 +231,14 @@ var fx = (function(){
 })();
 
 /* ---------- art switching ---------- */
+function loadArt(spread, key){
+  Array.prototype.forEach.call(spread.querySelectorAll(".layer"), function(layer){
+    if(layer.dataset.art === key) Array.prototype.forEach.call(layer.querySelectorAll("img"), function(img){ img.loading = "eager"; });
+  });
+}
 function showArt(spread, key, push){
   var a = ART[key]; if(!a) return;
+  loadArt(spread, key);
   Array.prototype.forEach.call(spread.querySelectorAll(".layer"), function(l){
     var on = l.dataset.art === key;
     if(on && !l.classList.contains("show")){
@@ -272,6 +278,8 @@ function settle(i, focus){
   announce.textContent = "Page " + (i+1) + " of " + PAGES.length + ": " + pageName(i);
   var inner = spreads[i].querySelector(".inner"); if(inner) inner.scrollTop = 0;
   if(focus){ var h = spreads[i].querySelector(".h"); if(h) h.focus({preventScroll:true}); }
+  if(spreads[i+1]) loadArt(spreads[i+1], firstArt(i+1).key);
+  if(!playing) warmPage(i);
 }
 function cloneFor(el){
   var c = el.cloneNode(true);
@@ -295,7 +303,8 @@ function animate(el, frames, ms){
 }
 function turnTo(to, opts){
   opts = opts || {};
-  if(busy || to === cur || to < 0 || to >= PAGES.length) return Promise.resolve();
+  if(busy) return activeTurn.promise;
+  if(to === cur || to < 0 || to >= PAGES.length) return Promise.resolve();
   var from = cur, fwd = to > from;
   var A = spreads[from], B = spreads[to];
   if(reduce || !A.animate){
@@ -380,7 +389,7 @@ function turnTo(to, opts){
     jobs.push(rotate(leaf2, fr, bk, k0, k1, ms));
     jobs.push(animate(sh2, fwd ? [{opacity:0},{opacity:1}] : [{opacity:1},{opacity:0}], ms*0.9));
   }
-  return Promise.all(jobs).then(function(){
+  turn.promise = Promise.all(jobs).then(function(){
     if(turn.cancelled) return;
     cancelTurn(); settle(to, !opts.auto);
   }, function(error){
@@ -388,11 +397,12 @@ function turnTo(to, opts){
     console.error("Page turn animation failed", error);
     cancelTurn(); settle(to, !opts.auto);
   });
+  return turn.promise;
 }
 prevBtn.addEventListener("click", function(){ hop(cur - 1); });
 nextBtn.addEventListener("click", function(){ hop(cur + 1); });
 document.addEventListener("keydown", function(e){
-  var t = e.target; if(e.defaultPrevented || (t && t.closest && t.closest("input,select,textarea,summary,details"))) return;
+  var t = e.target; if(e.defaultPrevented || (t && t.closest && t.closest("input,select,textarea,summary,details,dialog"))) return;
   if(e.key === "ArrowRight") { hop(cur + 1); }
   if(e.key === "ArrowLeft") { hop(cur - 1); }
 });
@@ -403,7 +413,7 @@ spreadsEl.addEventListener("touchend", function(e){
   if(Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5){ hop(cur + (dx < 0 ? 1 : -1)); }
 }, {passive:true});
 spreadsEl.addEventListener("click", function(e){
-  var go = e.target.closest("[data-go]"); if(go){ turnTo(parseInt(go.dataset.go, 10)); return; }
+  var go = e.target.closest("[data-go]"); if(go){ hop(parseInt(go.dataset.go, 10)); return; }
 });
 // hovering a paragraph brings up its picture
 spreadsEl.addEventListener("mouseover", function(e){
@@ -422,7 +432,9 @@ PAGES.forEach(function(pg, i){
   else if(/^ch\d/.test(pg.key)) SEQ.push({ page:i, wait:5500, title:(spreads[i].querySelector(".h") || {}).textContent || "" });
 });
 var waitT = 0;
-var introDone = false, queue = [], pos = 0, playing = false, paused = false, audio = null, token = 0;
+var introDone = false, queue = [], pos = 0, playing = false, paused = false, audio = new Audio(), token = 0;
+var preload = null, currentURL = null, currentItem = null, artSwitched = false, waitElapsed = 0;
+audio.preload = "auto";
 var ICON_PLAY = '<path d="M4 2.5v11l9-5.5z" fill="currentColor"/>', ICON_PAUSE = '<path d="M4 2.5h3v11H4zM9 2.5h3v11H9z" fill="currentColor"/>';
 var RATES = [0.75, 1, 1.25, 1.5], rate = 1;
 try { var sr = parseFloat(localStorage.getItem("lewRate")); if(RATES.indexOf(sr) >= 0) rate = sr; } catch(e){}
@@ -435,34 +447,117 @@ function setBtn(isPlaying){
   playBtn.setAttribute("aria-pressed", isPlaying ? "true" : "false");
 }
 function clearHL(){ CLIPS.forEach(function(c){ c.el.classList.remove("speaking"); }); }
-function stopSound(){ token++; if(audio){ audio.onended = null; audio.pause(); audio = null; } if(synth) synth.cancel(); }
-function finish(){ clearTimeout(waitT); stopSound(); playing = false; paused = false; clearHL(); setBtn(false); nowTitle.textContent = ""; }
-function speak(c, done){
+function discardPreload(){
+  if(!preload) return;
+  preload.controller.abort();
+  if(preload.url) URL.revokeObjectURL(preload.url);
+  preload = null;
+}
+function preloadClip(c){
+  if(!c || !AUDIO[c.id]){ discardPreload(); return; }
+  if(preload && preload.id === c.id) return;
+  discardPreload();
+  var entry = preload = {id:c.id, controller:new AbortController(), url:null};
+  fetch(AUDIO[c.id], {signal:entry.controller.signal}).then(function(response){
+    if(!response.ok) throw new Error("HTTP " + response.status + " for " + AUDIO[c.id]);
+    return response.blob();
+  }).then(function(blob){
+    if(preload === entry) entry.url = URL.createObjectURL(blob);
+  }).catch(function(error){
+    if(error.name === "AbortError") return;
+    if(preload === entry) preload = null;
+    console.warn("Could not preload narration", c.id, error);
+  });
+}
+function warmPage(i){
+  preloadClip(SEQ.filter(function(c){ return c.page >= i && c.id && !(introDone && c.id === "0-00"); })[0]);
+}
+function warmNext(){
+  var c = queue.slice(pos+1).filter(function(item){ return item.id; })[0];
+  preloadClip(c);
+  if(c) loadArt(spreads[c.page], c.art);
+}
+function stopSound(){
+  token++;
+  audio.onended = audio.ontimeupdate = audio.onplaying = audio.onwaiting = audio.onstalled = audio.onerror = audio.onloadedmetadata = null;
+  audio.pause(); audio.removeAttribute("src"); audio.load();
+  if(currentURL){ URL.revokeObjectURL(currentURL); currentURL = null; }
+  if(synth) synth.cancel();
+  currentItem = null; waitElapsed = 0; waitStart = null;
+}
+function finish(){ clearTimeout(waitT); stopSound(); discardPreload(); playing = false; paused = false; autoPaused = false; clearHL(); setBtn(false); nowTitle.textContent = ""; }
+function audioFailure(error){
+  console.error("Narration playback failed", error);
+  finish();
+  var message = error.name === "NotAllowedError" ? "Audio was blocked. Press Play to start." : "Audio could not load. Press Play to retry.";
+  nowTitle.textContent = message;
+}
+function playAudio(c, done, resume){
   var my = ++token;
-  if(AUDIO[c.id]){
-    audio = new Audio(AUDIO[c.id]);
-    audio.playbackRate = rate; audio.preservesPitch = true;
-    audio.onended = function(){ if(my === token) done(); };
-    if(c.artAt){ var au0 = audio, sw = false; au0.addEventListener("timeupdate", function(){ if(!sw && my === token && au0.duration && au0.currentTime / au0.duration >= c.artAt.frac){ sw = true; showArt(spreads[c.page], c.artAt.art, true); } }); }
+  if(!resume){
+    audio.pause();
+    if(currentURL){ URL.revokeObjectURL(currentURL); currentURL = null; }
+    var src = AUDIO[c.id];
+    if(preload && preload.id === c.id){
+      if(preload.url){ currentURL = preload.url; src = currentURL; preload = null; }
+      else discardPreload();
+    }
+    audio.src = src; currentItem = c; artSwitched = false;
+  }
+  audio.playbackRate = rate; audio.preservesPitch = true;
+  function live(){ return my === token && playing && !paused; }
+  audio.onended = function(){ if(live() && audio.ended) done(); };
+  audio.onloadedmetadata = function(){
+    if(my !== token) return;
+    if(isFinite(audio.duration)) DUR[c.id] = audio.duration;
+    updateBar(cur);
+  };
+  audio.onplaying = function(){
+    if(!live()) return;
+    nowTitle.textContent = c.title; c.el.classList.add("speaking"); warmNext();
+  };
+  audio.onwaiting = audio.onstalled = function(){ if(live()) nowTitle.textContent = "Buffering audio..."; };
+  audio.onerror = function(){ if(live() && audio.error) audioFailure(audio.error); };
+  audio.ontimeupdate = function(){
+    if(!live()) return;
+    if(c.artAt && !artSwitched && audio.duration && audio.currentTime / audio.duration >= c.artAt.frac){
+      artSwitched = true; showArt(spreads[c.page], c.artAt.art, true);
+    }
     var end = (B.AUDIO_END || {})[c.id];
-    if(end){ var au = audio; au.ontimeupdate = function(){ if(au.currentTime >= end && my === token){ au.ontimeupdate = null; au.pause(); done(); } }; }
-    audio.play().catch(finish);
+    if(end && audio.currentTime >= end){ audio.ontimeupdate = null; audio.pause(); done(); }
+  };
+  nowTitle.textContent = "Loading audio...";
+  audio.play().catch(function(error){ if(live()) audioFailure(error); });
+}
+function speak(c, done){
+  if(AUDIO[c.id]){
+    playAudio(c, done, false);
   } else if(synth){
+    var my = ++token;
     var u = new SpeechSynthesisUtterance(c.el.textContent); u.rate = 0.92 * rate; u.lang = "en-US";
-    u.onend = function(){ if(my === token) done(); };
+    u.onstart = function(){ if(my === token) c.el.classList.add("speaking"); };
+    u.onend = function(){ if(my === token && playing && !paused) done(); };
+    u.onerror = function(error){ if(my === token && playing && !paused) audioFailure(error); };
     synth.cancel(); synth.speak(u);
-  } else { finish(); }
+  } else { audioFailure(new Error("Narration and speech synthesis are unavailable")); }
 }
 function playCurrent(){
   if(!playing || paused) return;
   if(pos >= queue.length){ finish(); return; }
-  var c = queue[pos];
-  var go = c.page !== cur ? (function(){ clearHL(); return new Promise(function(r){ setTimeout(r, 450); }).then(function(){ return turnTo(c.page, {auto:true}); }); })() : Promise.resolve();
+  var c = queue[pos], my = ++token;
+  var go = c.page !== cur || busy ? turnTo(c.page, {auto:true}) : Promise.resolve();
   go.then(function(){
-    if(!playing || paused) return;
+    if(my !== token || !playing || paused || queue[pos] !== c) return;
+    if(c.page !== cur){ playCurrent(); return; }
     clearHL();
-    if(c.wait){ nowTitle.textContent = c.title; waitStart = performance.now(); var mw = ++token; clearTimeout(waitT); waitT = setTimeout(function(){ if(mw === token && playing && !paused){ pos++; playCurrent(); } }, c.wait); return; }
-    c.el.classList.add("speaking");
+    if(currentItem !== c){ currentItem = c; waitElapsed = 0; }
+    if(c.wait){
+      nowTitle.textContent = c.title; waitStart = performance.now(); warmNext();
+      clearTimeout(waitT); waitT = setTimeout(function(){
+        if(my === token && playing && !paused){ waitStart = null; waitElapsed = 0; pos++; playCurrent(); }
+      }, Math.max(0, c.wait - waitElapsed));
+      return;
+    }
     showArt(spreads[c.page], c.art, c.push);
     nowTitle.textContent = c.title;
     var inner = spreads[c.page].querySelector(".inner"), r = c.el.getBoundingClientRect(), ir = inner.getBoundingClientRect();
@@ -470,25 +565,31 @@ function playCurrent(){
     speak(c, function(){ pos++; playCurrent(); });
   });
 }
-function startFrom(i){
-  var from = SEQ.filter(function(c){ return c.page >= i && !(introDone && c.id === "0-00"); });
-  queue = from.length ? from : SEQ.filter(function(c){ return !(introDone && c.id === "0-00"); }); pos = 0; playing = true; paused = false; setBtn(true);
+function startFrom(i, includeIntro){
+  clearTimeout(waitT); stopSound();
+  queue = SEQ.filter(function(c){ return c.page >= i && (includeIntro || !(introDone && c.id === "0-00")); });
+  if(!queue.length){ finish(); nowTitle.textContent = "There is no narration on this page."; return; }
+  pos = 0; playing = true; paused = false; setBtn(true);
   playCurrent();
 }
 function pausePlay(msg){
-  paused = true; token++; clearTimeout(waitT); waitStart = null; if(audio) audio.pause(); if(synth) synth.cancel(); setBtn(false);
+  paused = true; token++; clearTimeout(waitT);
+  if(waitStart !== null) waitElapsed += performance.now() - waitStart;
+  waitStart = null; audio.pause(); if(synth) synth.cancel(); setBtn(false);
   nowTitle.textContent = msg || "Paused"; announce.textContent = "Paused";
 }
 function resumePlay(){
-  if(queue[pos] && queue[pos].page !== cur){ startFrom(cur); return; }
   paused = false; setBtn(true); if(queue[pos]) nowTitle.textContent = queue[pos].title || "";
-  if(audio && queue[pos] && !queue[pos].wait && !audio.ended){ var my = ++token; audio.onended = function(){ if(my === token){ pos++; playCurrent(); } }; audio.play(); } else playCurrent();
+  if(queue[pos] && currentItem === queue[pos] && AUDIO[queue[pos].id] && audio.getAttribute("src") && !audio.ended){
+    playAudio(queue[pos], function(){ pos++; playCurrent(); }, true);
+  } else playCurrent();
 }
 function hop(to){
   if(busy || to < 0 || to >= PAGES.length) return;
   var live = playing && !paused;
   if(playing){ clearTimeout(waitT); stopSound(); clearHL(); playing = false; paused = false; setBtn(false); nowTitle.textContent = ""; }
-  turnTo(to).then(function(){ if(live) startFrom(cur); });
+  var my = ++token; warmPage(to);
+  turnTo(to).then(function(){ if(live && my === token) startFrom(cur); });
 }
 var autoPaused = false;
 function autoPause(msg){ if(playing && !paused){ pausePlay(msg); autoPaused = true; } }
@@ -497,7 +598,7 @@ playBtn.addEventListener("click", function(){
   autoPaused = false;
   if(playing && !paused){ pausePlay(); return; }
   if(playing && paused){ resumePlay(); return; }
-  startFrom(cur);
+  startFrom(activeTurn ? activeTurn.to : cur);
 });
 
 /* ---------- listening bar: chapter progress + chapter list ---------- */
@@ -523,13 +624,7 @@ if(chMenu){
 }
 function closeMenu(){ if(!chMenu) return; chMenu.hidden = true; chBtn.setAttribute("aria-expanded","false"); }
 /* progress = share of the chapter's listening time already heard (real audio durations; openers count their hold) */
-var DUR = {}, waitStart = null;
-SEQ.forEach(function(c){
-  if(!c.id || !AUDIO[c.id] || DUR[c.id] != null) return;
-  DUR[c.id] = 0; var a = new Audio(); a.preload = "metadata";
-  a.onloadedmetadata = function(){ DUR[c.id] = isFinite(a.duration) ? a.duration : 0; updateBar(cur); };
-  a.src = AUDIO[c.id];
-});
+var DUR = Object.assign({}, B.AUDIO_DURATIONS || {}), waitStart = null;
 function itemDur(c){
   if(c.wait) return c.wait / 1000;
   var d = DUR[c.id] || 0, end = (B.AUDIO_END || {})[c.id];
@@ -544,7 +639,7 @@ function chapFrac(a, b, i){
     var d = itemDur(c), k = SEQ.indexOf(c); tot += d;
     if(live){
       if(k < ci) done += d;
-      else if(k === ci) done += c.wait ? (waitStart ? Math.min(d, (performance.now() - waitStart) / 1000) : 0) : (audio ? Math.min(d, audio.currentTime || 0) : 0);
+      else if(k === ci) done += c.wait ? Math.min(d, (waitElapsed + (waitStart !== null ? performance.now() - waitStart : 0)) / 1000) : Math.min(d, audio.currentTime || 0);
     } else if(c.page < i) done += d;
   });
   return tot ? Math.min(100, done / tot * 100) : 0;
@@ -595,7 +690,7 @@ function openLarge(spread){
     var g = document.createElement("div"); g.className = "lb-album";
     a.items.forEach(function(it){
       var f = document.createElement("figure");
-      f.innerHTML = (it.src ? '<img src="'+it.src+'" alt="">' : '<div class="wash" style="--c1:#e9d2ad;--c2:#d8c3a2;--c3:#cdb79a;--c0:#efe2c8"></div>') + '<figcaption>'+esc(it.cap)+'</figcaption>';
+      f.innerHTML = (it.src ? '<img src="'+it.src+'" alt="'+esc(it.alt || "")+'">' : '<div class="wash" style="--c1:#e9d2ad;--c2:#d8c3a2;--c3:#cdb79a;--c0:#efe2c8"></div>') + '<figcaption>'+esc(it.cap)+'</figcaption>';
       g.appendChild(f);
     });
     lbStage.appendChild(g);
@@ -618,12 +713,19 @@ lb.addEventListener("click", function(e){ if(e.target === lb || e.target === lbS
 settle(0, false);
 LewBook.playIntro = function(){
   if(!SEQ.length) return false;
-  introDone = true; queue = SEQ.slice(); pos = 0; playing = true; paused = false; setBtn(true); playCurrent(); return true;
+  introDone = true; startFrom(0, true); return true;
 };
 LewBook.relayout = relayout;
 LewBook.jump = function(key){
-  var i = key === "end" ? PAGES.length - 1 : PAGES.map(function(p){ return p.key; }).indexOf(key);
-  if(i < 0) return false; finish(); queue = []; cancelTurn(); settle(i, false); return true;
+  var i = PAGES.map(function(p){ return p.key; }).indexOf(key === "end" ? "ch10" : key);
+  if(i < 0) return false;
+  finish(); queue = [];
+  if(rd.open) rd.close();
+  if(lb.open) lb.close();
+  cancelTurn(); settle(i, false); return true;
 };
+window.addEventListener("hashchange", function(){
+  if(LewBook.jump(location.hash.slice(1)) && window.ColdOpen) window.ColdOpen.dismiss();
+});
 
 } };
