@@ -4,18 +4,11 @@ if(this.inited && document.getElementById("spreads").children.length) return;
 this.inited = true;
 var LewBook = this, B = window.BOOK, AUDIO = B.AUDIO, ART = B.ART, PAGES = B.PAGES, CHAPTERS = B.CHAPTERS;
 if(window.BOOK_ALL && !PAGES.some(function(p){ return p.key === "all1"; })){
-  var ALL = window.BOOK_ALL, per = 7, first = 4, chunks = [], at = 0;
+  var ALL = window.BOOK_ALL;
   var allEsc = function(s){ return String(s).replace(/[&<>"]/g, function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]; }); };
-  chunks.push(ALL.slice(0, first)); at = first;
-  while(at < ALL.length){ chunks.push(ALL.slice(at, at + per)); at += per; }
-  if(chunks.length % 2) chunks.push([]);
-  var item = function(a){ return '<details class="full"><summary><span class="q">'+allEsc(a.q)+'</span> <span class="more">Read'+(a.short ? ' (shortened)' : '')+' \u2192</span></summary><div class="body">'+a.body+'</div></details>'; };
-  var head = '<h2 class="h" tabindex="-1">All his answers</h2><p class="all-note">Every question Storyworth asked him, in his own words. A few that appear in the book are shortened here too; four private answers are left out.</p>';
-  for(var c = 0; c < chunks.length; c += 2){
-    PAGES.push({key:"all" + (c/2 + 1), run:"All his answers", allPage:true,
-      leftHtml:(c === 0 ? head : '<p class="running">All his answers</p>') + chunks[c].map(item).join(""),
-      html:chunks[c+1].map(item).join("")});
-  }
+  var item = function(a, i){ return '<details class="full" data-answer="'+i+'"><summary><span class="q">'+allEsc(a.q)+'</span> <span class="more">Read'+(a.short ? ' (shortened)' : '')+' \u2192</span></summary><div class="body">'+a.body+'</div></details>'; };
+  var head = '<h2 class="h" tabindex="-1">All his answers</h2><p class="all-note">Every question Storyworth asked him, in his own words. A few that appear in the book are shortened here too; four private answers are left out.</p><p class="all-note">Written responses, without narration. Choose a question to read his answer.</p>';
+  PAGES.push({key:"all1", allPage:true, html:head + ALL.map(item).join("")});
 }
 
 var reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -69,9 +62,10 @@ PAGES.forEach(function(pg, i){
     right = (pg.run ? '<p class="running">'+esc(pg.run)+'</p>' : '') + h;
   }
   var s = document.createElement("section");
-  s.className = "spread"; s.dataset.i = i; s.hidden = true;
+  s.className = "spread" + (pg.allPage ? " responses" : ""); s.dataset.i = i; s.hidden = true;
   s.setAttribute("aria-label", "Page " + (i+1) + " of " + PAGES.length);
-  s.innerHTML = pg.leftHtml ?
+  s.innerHTML = pg.allPage ?
+    '<div class="page response-page"><div class="inner all-list">'+right+'</div></div>' : pg.leftHtml ?
     '<div class="page left"><div class="inner all-list">'+pg.leftHtml+'</div><span class="folio" aria-hidden="true">'+(i*2+1)+'</span></div>' +
     '<div class="page right"><div class="inner all-list">'+(pg.run ? '<p class="running">'+esc(pg.run)+'</p>' : '')+pg.html+'</div><span class="folio" aria-hidden="true">'+(i*2+2)+'</span></div>' :
     '<div class="page left"><div class="art">'+arts.map(layerHTML).join("")+'<canvas class="fx" aria-hidden="true"></canvas><button class="enlarge" type="button" aria-label="View this picture larger"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M9.5 2.5h4v4M13.5 2.5 9 7M6.5 13.5h-4v-4M2.5 13.5 7 9" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div><p class="caption" aria-hidden="true"></p><span class="folio" aria-hidden="true">'+(i*2+1)+'</span></div>' +
@@ -79,7 +73,7 @@ PAGES.forEach(function(pg, i){
   Array.prototype.forEach.call(s.querySelectorAll(".inner"), function(inner, side){
     inner.tabIndex = 0;
     inner.setAttribute("role", "region");
-    inner.setAttribute("aria-label", pg.leftHtml ? (side ? "Questions, right page" : "Questions, left page") : "Story text");
+    inner.setAttribute("aria-label", pg.allPage ? "All his written responses" : pg.leftHtml ? (side ? "Questions, right page" : "Questions, left page") : "Story text");
   });
   spreadsEl.appendChild(s);
   if(!pg.clips) Array.prototype.forEach.call(s.querySelectorAll("[data-clip]"), function(el){ CLIPS.push({id:el.dataset.clip, page:i, art:pg.art, push:false, el:el, title:"Introduction"}); });
@@ -125,6 +119,7 @@ var PAL = {
 };
 function decorate(){
   spreads.forEach(function(s, i){
+    if(PAGES[i].allPage) return;
     var pal = PAL[PAGES[i].key] || ["#d8cfb8","#c9d6e8"];
     var l = document.createElement("div"); l.className = "splash"; l.setAttribute("aria-hidden","true");
     l.style.backgroundImage = svgURL(washSVG([pal[0], pal[1], pal[0]], 7 + i*5));
@@ -282,6 +277,79 @@ function firstArt(i){
   return pg.clips ? {key:pg.clips[0].art, push:false} : {key:pg.art, push:false};
 }
 
+/* ---------- saved reading: local to this browser ---------- */
+var READING_KEY = "lewReading", rememberReading = false, progressUnavailable = false, progressNotified = false, saveT = 0, lastSave = 0;
+function pageKey(key){ return key === "end" ? "ch10" : /^all[2-4]$/.test(key) ? "all1" : key; }
+function validTop(n){ return typeof n === "number" && Number.isFinite(n) && n >= 0; }
+function readSavedReading(){
+  var raw, saved;
+  try { raw = localStorage.getItem(READING_KEY); }
+  catch(error){ progressUnavailable = true; console.warn("Reading progress storage is unavailable", error); return null; }
+  if(!raw) return null;
+  try { saved = JSON.parse(raw); }
+  catch(error){ console.warn("Saved reading progress could not be read", error); return null; }
+  var i = saved && PAGES.map(function(p){ return p.key; }).indexOf(pageKey(saved.page));
+  if(!saved || saved.version !== 1 || i < 0 || !Array.isArray(saved.scroll) || !saved.scroll.length || saved.scroll.length > 2 ||
+    !saved.scroll.every(function(s){ return s && validTop(s.top) && (s.anchor === null || typeof s.anchor === "string") && typeof s.fraction === "number" && Number.isFinite(s.fraction) && s.fraction >= -100 && s.fraction <= 1; })){
+    console.warn("Saved reading progress is outdated or invalid"); return null;
+  }
+  saved.page = PAGES[i].key;
+  if(saved.audio && (!validTop(saved.audio.time) || !CLIPS.some(function(c){ return c.page === i && c.id === saved.audio.id && AUDIO[c.id]; }))){
+    console.warn("Saved narration is no longer available"); saved.audio = null;
+  }
+  if(saved.answer && (typeof saved.answer.question !== "string" || !validTop(saved.answer.top))){
+    console.warn("Saved answer position is invalid"); saved.answer = null;
+  }
+  return saved;
+}
+var savedReading = readSavedReading();
+function scrollAnchor(el){ return el.dataset.clip ? "clip:" + el.dataset.clip : "answer:" + el.dataset.answer; }
+function scrollPosition(inner){
+  var position = {top:inner.scrollTop, anchor:null, fraction:0};
+  if(!position.top) return position;
+  var top = inner.getBoundingClientRect().top;
+  var anchor = Array.prototype.find.call(inner.querySelectorAll("[data-clip],[data-answer]"), function(el){ return el.getBoundingClientRect().bottom > top; });
+  if(anchor){
+    var r = anchor.getBoundingClientRect();
+    position.anchor = scrollAnchor(anchor); position.fraction = r.height ? (top - r.top) / r.height : 0;
+  }
+  return position;
+}
+function restoreScroll(inner, position){
+  inner.scrollTop = position.top;
+  if(!position.anchor) return null;
+  var anchor = Array.prototype.find.call(inner.querySelectorAll("[data-clip],[data-answer]"), function(el){ return scrollAnchor(el) === position.anchor; });
+  if(anchor){
+    var r = anchor.getBoundingClientRect();
+    inner.scrollTop += r.top - inner.getBoundingClientRect().top + position.fraction * r.height;
+  }
+  return anchor;
+}
+function savePosition(){
+  if(!rememberReading) return;
+  if(progressUnavailable){
+    if(!progressNotified){ progressNotified = true; announce.textContent = "Your place cannot be saved on this device. You can still read and listen."; }
+    return;
+  }
+  clearTimeout(saveT); lastSave = performance.now();
+  var narration = resumeTarget;
+  if(!narration && currentItem && currentItem.page === cur && AUDIO[currentItem.id] && audio.getAttribute("src")){
+    narration = {id:currentItem.id, time:audio.currentTime || 0};
+  }
+  var position = {version:1, page:PAGES[cur].key,
+    scroll:Array.prototype.map.call(spreads[cur].querySelectorAll(".inner"), scrollPosition),
+    audio:narration ? {id:narration.id, time:narration.time} : null,
+    answer:rd && rd.open ? {question:rd.querySelector("#rdQ").textContent, top:rd.scrollTop} : null};
+  try { localStorage.setItem(READING_KEY, JSON.stringify(position)); savedReading = position; }
+  catch(error){
+    progressUnavailable = true; console.warn("Reading progress could not be saved", error); savePosition();
+  }
+}
+function schedulePosition(){ if(rememberReading){ clearTimeout(saveT); saveT = setTimeout(savePosition, 250); } }
+spreadsEl.addEventListener("scroll", function(e){ if(e.target.closest(".spread") === spreads[cur]) schedulePosition(); }, true);
+window.addEventListener("pagehide", savePosition);
+document.addEventListener("visibilitychange", function(){ if(document.hidden) savePosition(); });
+
 /* ---------- page turning ---------- */
 var cur = 0, busy = false, activeTurn = null;
 var countEl = document.getElementById("count"), announce = document.getElementById("announce");
@@ -304,6 +372,7 @@ function settle(i, focus){
   if(focus){ var h = spreads[i].querySelector(".h"); if(h) h.focus({preventScroll:true}); }
   if(spreads[i+1]) loadArt(spreads[i+1], firstArt(i+1).key);
   if(!playing) warmPage(i);
+  savePosition();
 }
 function cloneFor(el){
   var c = el.cloneNode(true);
@@ -377,7 +446,7 @@ function turnTo(to, opts){
   }
   function half(cls, page){ var d = document.createElement("div"); d.className = "half " + cls; d.appendChild(copy(page)); var sh = document.createElement("div"); sh.className = "shadow"; d.appendChild(sh); stage.appendChild(d); return d; }
   function face(leaf, cls, page){ var d = document.createElement("div"); d.className = "face " + cls; if(page) d.appendChild(copy(page)); else { var p = document.createElement("div"); p.className = "page"; d.appendChild(p); } var sh = document.createElement("div"); sh.className = "shade"; d.appendChild(sh); leaf.appendChild(d); return d; }
-  if(wide.matches){
+  if(wide.matches && !PAGES[from].allPage && !PAGES[to].allPage){
     var Lsrc = fwd ? A : B, Rsrc = fwd ? B : A;
     var uL = half("under-l", Lsrc.querySelector(".page.left"));
     var uR = half("under-r", Rsrc.querySelector(".page.right"));
@@ -457,7 +526,7 @@ PAGES.forEach(function(pg, i){
 });
 var waitT = 0;
 var introDone = false, queue = [], pos = 0, playing = false, paused = false, audio = new Audio(), token = 0;
-var preload = null, currentURL = null, currentItem = null, artSwitched = false, waitElapsed = 0;
+var preload = null, currentURL = null, currentItem = null, artSwitched = false, waitElapsed = 0, resumeTarget = null;
 audio.preload = "auto";
 var ICON_PLAY = '<path d="M4 2.5v11l9-5.5z" fill="currentColor"/>', ICON_PAUSE = '<path d="M4 2.5h3v11H4zM9 2.5h3v11H9z" fill="currentColor"/>';
 var RATES = [0.75, 1, 1.25, 1.5], rate = 1;
@@ -467,7 +536,7 @@ function showRate(){ if(!spdBtn) return; spdBtn.textContent = (rate === 1 ? "1" 
 if(spdBtn){ showRate(); spdBtn.addEventListener("click", function(){ rate = RATES[(RATES.indexOf(rate) + 1) % RATES.length]; try { localStorage.setItem("lewRate", String(rate)); } catch(e){} if(audio) audio.playbackRate = rate; showRate(); announce.textContent = "Speed " + rate + " times"; }); }
 function setBtn(isPlaying){
   playBtn.querySelector("svg").innerHTML = isPlaying ? ICON_PAUSE : ICON_PLAY;
-  playBtn.querySelector("span").textContent = isPlaying ? "Pause" : (paused ? "Resume" : "Play");
+  playBtn.querySelector("span").textContent = isPlaying ? "Pause" : (paused || resumeTarget ? "Resume" : "Play");
   playBtn.setAttribute("aria-pressed", isPlaying ? "true" : "false");
 }
 function clearHL(){ CLIPS.forEach(function(c){ c.el.classList.remove("speaking"); }); }
@@ -530,10 +599,16 @@ function playAudio(c, done, resume){
   }
   audio.playbackRate = rate; audio.preservesPitch = true;
   function live(){ return my === token && playing && !paused; }
+  function restoreAudioTime(){
+    if(!resumeTarget || resumeTarget.id !== c.id) return;
+    audio.currentTime = Math.min(resumeTarget.time, Math.max(0, itemDur(c) - 0.1));
+    resumeTarget = null;
+  }
   audio.onended = function(){ if(live() && audio.ended) done(); };
   audio.onloadedmetadata = function(){
     if(my !== token) return;
     if(isFinite(audio.duration)) DUR[c.id] = audio.duration;
+    restoreAudioTime();
     updateBar(cur);
   };
   audio.onplaying = function(){
@@ -547,12 +622,15 @@ function playAudio(c, done, resume){
     if(c.artAt && !artSwitched && audio.duration && audio.currentTime / audio.duration >= c.artAt.frac){
       artSwitched = true; showArt(spreads[c.page], c.artAt.art, true);
     }
+    if(performance.now() - lastSave >= 1000) savePosition();
     var end = (B.AUDIO_END || {})[c.id];
     if(end && audio.currentTime >= end){ audio.ontimeupdate = null; audio.pause(); done(); }
   };
   nowTitle.textContent = "Loading audio...";
+  if(audio.readyState >= 1) restoreAudioTime();
   audio.play().catch(function(error){ if(live()) audioFailure(error); });
 }
+function artworkAt(c, time){ return c.artAt && time / (DUR[c.id] || itemDur(c)) >= c.artAt.frac ? c.artAt.art : c.art; }
 function speak(c, done){
   if(AUDIO[c.id]){
     playAudio(c, done, false);
@@ -582,7 +660,7 @@ function playCurrent(){
       }, Math.max(0, c.wait - waitElapsed));
       return;
     }
-    showArt(spreads[c.page], c.art, c.push);
+    showArt(spreads[c.page], resumeTarget && resumeTarget.id === c.id ? artworkAt(c, resumeTarget.time) : c.art, c.push);
     nowTitle.textContent = c.title;
     var inner = spreads[c.page].querySelector(".inner"), r = c.el.getBoundingClientRect(), ir = inner.getBoundingClientRect();
     if(r.top < ir.top || r.bottom > ir.bottom) inner.scrollTo({top: inner.scrollTop + (r.top - ir.top) - (ir.height - r.height)/2, behavior: reduce ? "auto" : "smooth"});
@@ -591,7 +669,9 @@ function playCurrent(){
 }
 function startFrom(i, includeIntro){
   clearTimeout(waitT); stopSound();
-  queue = SEQ.filter(function(c){ return c.page >= i && (includeIntro || !(introDone && c.id === "0-00")); });
+  if(PAGES[i].allPage){ resumeTarget = null; finish(); nowTitle.textContent = ""; return; }
+  var resumeIndex = resumeTarget ? SEQ.findIndex(function(c){ return c.page === i && c.id === resumeTarget.id; }) : -1;
+  queue = resumeIndex >= 0 ? SEQ.slice(resumeIndex) : SEQ.filter(function(c){ return c.page >= i && (includeIntro || !(introDone && c.id === "0-00")); });
   if(!queue.length){ finish(); nowTitle.textContent = "There is no narration on this page."; return; }
   pos = 0; playing = true; paused = false; setBtn(true);
   playCurrent();
@@ -601,6 +681,7 @@ function pausePlay(msg){
   if(waitStart !== null) waitElapsed += performance.now() - waitStart;
   waitStart = null; audio.pause(); if(synth) synth.cancel(); setBtn(false);
   nowTitle.textContent = msg || "Paused"; announce.textContent = "Paused";
+  savePosition();
 }
 function resumePlay(){
   paused = false; setBtn(true); if(queue[pos]) nowTitle.textContent = queue[pos].title || "";
@@ -611,9 +692,10 @@ function resumePlay(){
 function hop(to){
   if(busy || to < 0 || to >= PAGES.length) return;
   var live = playing && !paused;
+  resumeTarget = null;
   if(playing){ clearTimeout(waitT); stopSound(); clearHL(); playing = false; paused = false; setBtn(false); nowTitle.textContent = ""; }
   var my = ++token; warmPage(to);
-  turnTo(to).then(function(){ if(live && my === token) startFrom(cur); });
+  turnTo(to).then(function(){ if(live && my === token && !PAGES[cur].allPage) startFrom(cur); });
 }
 var autoPaused = false;
 function autoPause(msg){ if(playing && !paused){ pausePlay(msg); autoPaused = true; } }
@@ -640,13 +722,52 @@ if(chSegs){
   CORE.forEach(function(c){ var b = document.createElement("button"); b.type = "button"; b.className = "lb-seg"; b.setAttribute("aria-label", "Chapter " + c.n + ": " + c.name); b.title = c.n + ". " + c.name; b.addEventListener("click", function(){ hop(c.i); }); c.seg = b; chSegs.appendChild(b); });
 }
 if(chMenu){
-  chMenu.innerHTML = '<h2>Jump to a chapter</h2>' + CHS.map(function(c, k){ return '<button type="button" data-k="'+k+'"><span class="n">'+(c.n >= 1 && c.n <= 9 ? c.n : "")+'</span><span class="t">'+esc(c.name)+'</span></button>'; }).join("");
+  chMenu.innerHTML = '<h2>Jump to a chapter</h2>' + CHS.map(function(c, k){ return '<button type="button" data-k="'+k+'"><span class="n">'+(c.n >= 1 && c.n <= 9 ? c.n : "")+'</span><span class="t">'+esc(c.name)+'</span></button>'; }).join("") +
+    '<div class="lb-sharing"><button type="button" id="shareChapterBtn">Share this chapter</button><p id="shareStatus" role="status"></p><label id="shareLinkLabel" hidden>Chapter link<input id="shareLink" type="url" readonly></label></div>';
   closeMenu();
   chMenu.addEventListener("click", function(e){ var b = e.target.closest("button[data-k]"); if(!b) return; closeMenu(); hop(CHS[+b.dataset.k].i); });
-  chBtn.addEventListener("click", function(){ if(chMenu.hidden){ chMenu.hidden = false; chBtn.setAttribute("aria-expanded","true"); var a = chMenu.querySelector('[aria-current="true"]') || chMenu.querySelector("button"); if(a) a.focus(); positionMenu(); } else closeMenu(); });
+  chBtn.addEventListener("click", function(){ if(chMenu.hidden){ shareStatus.textContent = ""; shareLinkLabel.hidden = true; chMenu.hidden = false; chBtn.setAttribute("aria-expanded","true"); var a = chMenu.querySelector('[aria-current="true"]') || chMenu.querySelector("button"); if(a) a.focus(); positionMenu(); } else closeMenu(); });
   document.addEventListener("click", function(e){ if(!chMenu.hidden && !e.target.closest("#chMenu,#chBtn")) closeMenu(); });
   document.addEventListener("keydown", function(e){ if(e.key === "Escape" && !chMenu.hidden){ closeMenu(); chBtn.focus(); } });
 }
+/* ---------- share the current chapter ---------- */
+var shareBtn = document.getElementById("shareChapterBtn"), shareStatus = document.getElementById("shareStatus"), shareLinkLabel = document.getElementById("shareLinkLabel"), shareLink = document.getElementById("shareLink");
+function currentChapter(i){
+  var chapter = CHS[0]; CHS.forEach(function(c){ if(c.i <= i) chapter = c; }); return chapter;
+}
+function sharingData(){
+  var c = currentChapter(cur), canonical = document.querySelector('link[rel="canonical"]');
+  var url = new URL(canonical ? canonical.href : location.href); url.search = ""; url.hash = PAGES[c.i].key;
+  return {title:"Lew's stories: " + c.name, url:url.href};
+}
+function shareFeedback(message){ (chMenu.hidden ? announce : shareStatus).textContent = message; }
+async function copyChapterLink(data){
+  try {
+    if(!navigator.clipboard || !navigator.clipboard.writeText) throw new Error("Clipboard access is unavailable");
+    await navigator.clipboard.writeText(data.url); shareFeedback("Link copied.");
+  } catch(error){
+    console.warn("Chapter link could not be copied automatically", error);
+    if(chMenu.hidden || sharingData().url !== data.url){
+      shareFeedback("The link could not be copied. Open Chapters and try sharing again."); return;
+    }
+    shareLink.value = data.url; shareLinkLabel.hidden = false;
+    shareFeedback("Copy the link below to share it."); shareLink.focus(); shareLink.select(); positionMenu();
+  }
+}
+async function shareChapter(){
+  if(shareBtn.getAttribute("aria-disabled") === "true") return;
+  var data = sharingData(); shareBtn.setAttribute("aria-disabled", "true"); shareStatus.textContent = ""; shareLinkLabel.hidden = true;
+  try {
+    if(navigator.share){
+      try { await navigator.share(data); shareFeedback("Shared."); }
+      catch(error){
+        if(error.name === "AbortError"){ shareFeedback("Sharing canceled."); }
+        else { console.warn("Native chapter sharing failed", error); await copyChapterLink(data); }
+      }
+    } else await copyChapterLink(data);
+  } finally { shareBtn.removeAttribute("aria-disabled"); }
+}
+if(shareBtn) shareBtn.addEventListener("click", shareChapter);
 function closeMenu(){ if(!chMenu) return; chMenu.hidden = true; chBtn.setAttribute("aria-expanded","false"); }
 function positionMenu(){
   if(!chMenu || chMenu.hidden) return;
@@ -680,6 +801,9 @@ function chapFrac(a, b, i){
 setInterval(function(){ if(playing && !paused) updateBar(cur); }, 300);
 function updateBar(i){
   if(!CHS.length || !chName) return;
+  var reading = !!PAGES[i].allPage, nav = playBtn.closest("nav");
+  playBtn.hidden = reading; if(spdBtn) spdBtn.hidden = reading; if(chSegs) chSegs.hidden = reading;
+  nav.classList.toggle("reading-mode", reading); nav.setAttribute("aria-label", reading ? "Reading controls" : "Listening controls");
   var k = 0; CHS.forEach(function(c, x){ if(c.i <= i) k = x; });
   var c = CHS[k];
   chName.textContent = c.n === 0 ? "Not a Storyteller, As a Rule" : c.name;
@@ -690,7 +814,11 @@ function updateBar(i){
     s.seg.style.setProperty("--f", f + "%");
     if(s === c) s.seg.setAttribute("aria-current", "step"); else s.seg.removeAttribute("aria-current");
   });
-  Array.prototype.forEach.call(chMenu ? chMenu.querySelectorAll("button") : [], function(b){ if(+b.dataset.k === k) b.setAttribute("aria-current","true"); else b.removeAttribute("aria-current"); });
+  Array.prototype.forEach.call(chMenu ? chMenu.querySelectorAll("button[data-k]") : [], function(b){ if(+b.dataset.k === k) b.setAttribute("aria-current","true"); else b.removeAttribute("aria-current"); });
+  if(shareBtn){
+    var label = c.n >= 1 && c.n <= 9 ? "Share this chapter" : c.n === -1 ? "Share written responses" : c.n === 0 ? "Share this book" : "Share the closing";
+    shareBtn.textContent = label; shareBtn.setAttribute("aria-label", label + ": " + c.name);
+  }
 }
 
 /* ---------- full-answer reader ---------- */
@@ -698,19 +826,23 @@ var rd = document.createElement("dialog"); rd.className = "reader"; rd.setAttrib
 rd.innerHTML = '<div class="rd-in"><button class="btn rd-close" type="button">Close</button><p class="rd-k">His full answer</p><h3 id="rdQ"></h3><div class="rd-body"></div></div>';
 document.body.appendChild(rd);
 rd.querySelector(".rd-close").addEventListener("click", function(){ rd.close(); });
-rd.addEventListener("close", autoResume);
+rd.addEventListener("close", function(){ autoResume(); savePosition(); });
+rd.addEventListener("scroll", schedulePosition);
 rd.addEventListener("click", function(e){ if(e.target === rd) rd.close(); });
 spreadsEl.addEventListener("click", function(e){
   var sm = e.target.closest && e.target.closest("details.full > summary"); if(!sm) return;
   e.preventDefault();
-  var dt = sm.parentNode;
+  openAnswer(sm.parentNode);
+});
+function openAnswer(dt){
+  var sm = dt.querySelector("summary");
   rd.querySelector("#rdQ").textContent = sm.querySelector(".q").textContent;
   rd.querySelector(".rd-k").textContent = /shortened/.test(sm.textContent) ? "His answer, shortened" : "His full answer";
   rd.querySelector(".rd-body").innerHTML = dt.querySelector(".body").innerHTML;
   autoPause("Paused \u00b7 reading his full answer");
   if(rd.showModal) rd.showModal(); else rd.setAttribute("open", "");
-  rd.querySelector(".rd-body").scrollTop = 0;
-});
+  rd.scrollTop = 0; savePosition();
+}
 
 /* ---------- view larger ---------- */
 var lb = document.getElementById("lightbox"), lbStage = document.getElementById("lbStage"), lbCap = document.getElementById("lbCap");
@@ -749,16 +881,54 @@ LewBook.playIntro = function(){
   introDone = true; startFrom(0, true); return true;
 };
 LewBook.relayout = relayout;
-LewBook.jump = function(key){
-  var i = PAGES.map(function(p){ return p.key; }).indexOf(key === "end" ? "ch10" : key);
+LewBook.jump = function(key, focus){
+  var i = PAGES.map(function(p){ return p.key; }).indexOf(pageKey(key));
   if(i < 0) return false;
-  finish(); queue = [];
+  resumeTarget = null; finish(); queue = [];
   if(rd.open) rd.close();
   if(lb.open) lb.close();
-  cancelTurn(); settle(i, false); return true;
+  cancelTurn(); settle(i, false);
+  var target = spreads[i].querySelector(".h");
+  var legacy = /^all([2-4])$/.exec(key);
+  if(legacy){
+    var row = spreads[i].querySelector('[data-answer="'+(4 + (+legacy[1] * 2 - 3) * 7)+'"]');
+    if(row){ var inner = row.closest(".inner"); inner.scrollTop += row.getBoundingClientRect().top - inner.getBoundingClientRect().top; target = row.querySelector("summary"); savePosition(); }
+  }
+  if(focus !== false && target) target.focus({preventScroll:true});
+  return true;
 };
+LewBook.isPageKey = function(key){ return PAGES.some(function(p){ return p.key === pageKey(key); }); };
+LewBook.startRemembering = function(){ rememberReading = true; savePosition(); };
+LewBook.getSavedReading = function(){
+  if(!savedReading) return null;
+  var i = PAGES.findIndex(function(p){ return p.key === savedReading.page; });
+  if(i === 0 && !savedReading.audio && !savedReading.scroll.some(function(s){ return s.top > 0; }) && !savedReading.answer) return null;
+  return {name:pageName(i) || currentChapter(i).name};
+};
+LewBook.resumeReading = function(){
+  if(!savedReading) return false;
+  var saved = savedReading; rememberReading = false;
+  LewBook.jump(saved.page, false); introDone = cur > 0; resumeTarget = saved.audio || null;
+  setBtn(false); nowTitle.textContent = resumeTarget ? "Paused \u00b7 ready to resume" : "";
+  if(resumeTarget){
+    var clip = CLIPS.find(function(c){ return c.id === resumeTarget.id && c.page === cur; });
+    showArt(spreads[cur], artworkAt(clip, resumeTarget.time), clip.push); preloadClip(clip);
+  }
+  var focus = spreads[cur].querySelector(".h");
+  Array.prototype.forEach.call(spreads[cur].querySelectorAll(".inner"), function(inner, i){
+    if(saved.scroll[i]){ var anchor = restoreScroll(inner, saved.scroll[i]); if(anchor && anchor.matches("details")) focus = anchor.querySelector("summary"); }
+  });
+  if(focus) focus.focus({preventScroll:true});
+  if(saved.answer){
+    var dt = Array.prototype.find.call(spreads[cur].querySelectorAll("details.full"), function(d){ return d.querySelector(".q").textContent === saved.answer.question; });
+    if(dt){ dt.querySelector("summary").focus({preventScroll:true}); openAnswer(dt); rd.scrollTop = saved.answer.top; }
+    else console.warn("The previously open answer is no longer on this page");
+  }
+  rememberReading = true; savePosition(); return true;
+};
+LewBook.restartReading = function(){ rememberReading = false; resumeTarget = null; introDone = false; LewBook.jump(PAGES[0].key); rememberReading = true; savePosition(); };
 window.addEventListener("hashchange", function(){
-  if(LewBook.jump(location.hash.slice(1)) && window.ColdOpen) window.ColdOpen.dismiss();
+  if(LewBook.jump(location.hash.slice(1))){ if(window.ColdOpen) window.ColdOpen.dismiss(); LewBook.startRemembering(); }
 });
 
 } };

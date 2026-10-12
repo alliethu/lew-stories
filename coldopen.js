@@ -2,7 +2,7 @@
 window.ColdOpen = (function(){
   var reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   var $ = function(id){ return document.getElementById(id); };
-  var run = 0, anims = [], timers = [], done = false;
+  var run = 0, anims = [], timers = [], done = false, returning = false;
   var SIG = { from:197, to:205, vb:[172,276,182,56] };
 
   /* ---------- pen-scratch sound: assets/audio/pen-scratch.mp3, or a soft synthesized scratch until it's added ---------- */
@@ -127,6 +127,7 @@ window.ColdOpen = (function(){
   function atRest(){
     var co = $("coldOpen"), cv = $("closedCover"), btn = $("coRead");
     co.hidden = true; co.removeAttribute("aria-modal"); soundOff();
+    document.querySelector(".stage").inert = false;
     document.removeEventListener("keydown", onKey);
     if(!cv || atRest.did){ return; } atRest.did = true;
     if(!window.matchMedia("(min-width: 860px)").matches){ cv.style.left = "0"; cv.style.width = "100%"; document.querySelector(".cover").style.clipPath = "none"; }
@@ -136,13 +137,14 @@ window.ColdOpen = (function(){
     btn.focus({ preventScroll:true });
     btn.addEventListener("click", function(){
       var my = ++run; btn.style.visibility = "hidden"; cv.setAttribute("aria-hidden", "true");
-      openCover(my).then(function(){ finish(); if(window.LewBook && window.LewBook.playIntro) window.LewBook.playIntro(); }).catch(function(){});
+      openCover(my).then(function(){ finish(); if(window.LewBook){ window.LewBook.startRemembering(); window.LewBook.playIntro(); } }).catch(function(){});
     }, { once:true });
   }
   function finish(){
     if(done) return; done = true; soundOff();
     var co = $("coldOpen"), cv = $("closedCover"), cover = document.querySelector(".cover");
     co.hidden = true; co.removeAttribute("aria-modal");
+    document.querySelector(".stage").inert = false;
     if(cv) cv.remove();
     cover.style.clipPath = "none";
     document.querySelector(".nav").style.visibility = "";
@@ -152,7 +154,14 @@ window.ColdOpen = (function(){
     if(window.LewBook && window.LewBook.relayout) window.LewBook.relayout();
   }
   function skip(){ run++; anims.forEach(function(a){ try{ a.cancel(); }catch(e){} }); timers.forEach(clearTimeout); atRest(); }
-  function onKey(e){ if(e.key === "Escape"){ e.preventDefault(); skip(); } }
+  function continueReading(){ finish(); window.LewBook.resumeReading(); }
+  function onKey(e){
+    if(e.key === "Escape"){ e.preventDefault(); if(returning) continueReading(); else skip(); }
+    if(e.key === "Tab" && returning){
+      e.preventDefault();
+      $(document.activeElement === $("coContinue") ? "coRestart" : "coContinue").focus();
+    }
+  }
 
   return {
     dismiss: function(){ run++; anims.forEach(function(a){ try{ a.cancel(); }catch(e){} }); timers.forEach(clearTimeout); finish(); },
@@ -160,10 +169,24 @@ window.ColdOpen = (function(){
       if(this.ready) return; this.ready = true;
       if(opts && opts.enabled === false){ finish(); return; }
       document.querySelector(".nav").style.visibility = "hidden";
+      document.querySelector(".stage").inert = true;
+      returning = !!(opts && opts.resume);
+      $("coldOpen").classList.toggle("returning", returning);
+      $("coldOpen").setAttribute("aria-label", returning ? "Return to the book" : "Opening");
+      $("coContinue").hidden = $("coRestart").hidden = $("coResume").hidden = !returning;
+      $("coBegin").hidden = returning;
       $("coBegin").addEventListener("click", begin);
       document.addEventListener("keydown", onKey);
-      buildSig().catch(function(){});
-      $("coBegin").focus({ preventScroll:true });
+      buildSig().then(function(){ if(returning) showAllInk(); }).catch(function(error){ console.warn("Opening signature could not load", error); });
+      if(returning){
+        $("closedCover").remove();
+        document.querySelector(".cover").style.clipPath = "none";
+        showAllInk();
+        $("coResume").textContent = "Pick up in " + opts.resume.name + ". Audio stays paused.";
+        $("coContinue").addEventListener("click", continueReading);
+        $("coRestart").addEventListener("click", function(){ finish(); window.LewBook.restartReading(); });
+      }
+      $(returning ? "coContinue" : "coBegin").focus({ preventScroll:!returning });
     }
   };
 })();
