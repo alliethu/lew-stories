@@ -32,10 +32,10 @@ function fixture(pages = [{key: 'title'}, {key: 'ch1'}, {key: 'p1'}, {key: 'answ
   class Audio {
     constructor() {
       this._src = ''; this.currentTime = 0; this.duration = 10; this.paused = true;
-      this.ended = false; this.error = null; this.playCalls = 0; this.results = [];
+      this.ended = false; this.error = null; this.playCalls = 0; this.results = []; this.readyState = 0;
       players.push(this);
     }
-    set src(value) { this._src = value; this.currentTime = 0; this.ended = false; }
+    set src(value) { this._src = value; this.currentTime = 0; this.ended = false; this.readyState = 0; }
     get src() { return this._src; }
     getAttribute() { return this._src || null; }
     removeAttribute() { this._src = ''; }
@@ -43,7 +43,10 @@ function fixture(pages = [{key: 'title'}, {key: 'ch1'}, {key: 'p1'}, {key: 'answ
     pause() { this.paused = true; }
     play() {
       this.playCalls++; this.paused = false;
-      return this.results.shift() || Promise.resolve().then(() => this.onplaying?.());
+      return this.results.shift() || Promise.resolve().then(() => {
+        if (!this.readyState) { this.readyState = 1; this.onloadedmetadata?.(); }
+        this.onplaying?.();
+      });
     }
     end() { this.ended = true; this.paused = true; this.onended?.(); }
   }
@@ -62,9 +65,10 @@ function fixture(pages = [{key: 'title'}, {key: 'ch1'}, {key: 'p1'}, {key: 'answ
     console: {error: (...args) => errors.push(args), warn: (...args) => errors.push(args)},
     PAGES: pages,
     CLIPS: clips, AUDIO: {a: 'a.mp3', b: 'b.mp3', c: 'c.mp3'}, B: {AUDIO_END: {}},
-    DUR: {}, waitStart: null, cur: 0, busy: false, activeTurn: null, reduce: true,
+    DUR: {}, waitStart: null, cur: 0, busy: false, activeTurn: null, reduce: true, lastSave: 0,
     spreads: Array.from({length: pages.length}, () => ({querySelector: () => node()})),
-    loadArt() {}, updateBar() {}, clearHL() {},
+    loadArt() {}, updateBar() {}, clearHL() {}, savePosition() {},
+    itemDur(c) { return Math.min(context.DUR[c.id] || 10, context.B.AUDIO_END[c.id] || Infinity); },
     art: [], showArt(spread, key) { context.art.push(key); },
     turnTo(to) { context.cur = to; return Promise.resolve(); }
   });
@@ -109,6 +113,58 @@ test('pause and resume preserve position, speed, and mid-recording artwork chang
   audio.currentTime = 6; audio.ontimeupdate(); audio.ontimeupdate();
   assert.equal(c.art.filter(key => key === 'second').length, 1);
   assert.equal(audio.playCalls, 2);
+});
+
+test('saved narration begins at the saved clip and timestamp, not the first clip on its page', async () => {
+  const f = fixture(), c = f.context, audio = f.players[0];
+  c.resumeTarget = {id: 'b', time: 4.5};
+  assert.equal(audio.playCalls, 0);
+  c.startFrom(0); await f.flush();
+  assert.equal(c.currentItem.id, 'b');
+  assert.equal(audio.currentTime, 4.5);
+  assert.equal(c.resumeTarget, null);
+});
+
+test('saved timestamps respect recording cutoffs and restore the matching artwork', async () => {
+  const f = fixture(), c = f.context, audio = f.players[0];
+  c.DUR.a = 10; c.B.AUDIO_END.a = 8;
+  c.resumeTarget = {id: 'a', time: 1000};
+  c.startFrom(0); await f.flush();
+  assert.equal(audio.currentTime, 7.9);
+  assert.equal(c.art[0], 'second');
+});
+
+test('pausing before saved audio loads still restores its timestamp after metadata is ready', async () => {
+  const f = fixture(), c = f.context, audio = f.players[0];
+  let complete;
+  audio.results.push(new Promise(resolve => { complete = resolve; }));
+  c.resumeTarget = {id: 'a', time: 6};
+  c.startFrom(0); await f.flush(); c.pausePlay();
+  audio.readyState = 1; audio.onloadedmetadata(); complete(); await f.flush();
+  assert.equal(c.resumeTarget.time, 6);
+  c.resumePlay(); await f.flush();
+  assert.equal(audio.currentTime, 6);
+  assert.equal(c.resumeTarget, null);
+});
+
+test('manual navigation clears a pending saved timestamp', async () => {
+  const f = fixture(), c = f.context;
+  c.resumeTarget = {id: 'a', time: 6};
+  c.hop(2); await f.flush(); c.startFrom(2); await f.flush();
+  assert.equal(c.resumeTarget, null);
+  assert.equal(c.currentItem.id, 'c');
+  assert.equal(f.players[0].currentTime, 0);
+});
+
+test('entering written responses stops narration and does not suggest playing missing audio', async () => {
+  const f = fixture([{key: 'title'}, {key: 'ch1'}, {key: 'p1'}, {key: 'all1', allPage: true}]), c = f.context;
+  c.startFrom(0); await f.flush(); c.hop(3); await f.flush();
+  assert.equal(c.playing, false);
+  assert.equal(f.ids.nowTitle.textContent, '');
+  const plays = f.players[0].playCalls;
+  c.startFrom(3); await f.flush();
+  assert.equal(f.players[0].playCalls, plays);
+  assert.equal(f.ids.nowTitle.textContent, '');
 });
 
 test('audio cutoffs still advance correctly after pause and resume', async () => {

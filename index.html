@@ -9,10 +9,11 @@
 <x-dc>
 <helmet>
 <title>Not a Storyteller, As a Rule: The Stories of Lew Etcoff</title>
+<link rel="canonical" href="https://alliethu.com/lew-stories/">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
 <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;600&amp;family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&amp;family=Nothing+You+Could+Do&amp;family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,600;1,7..72,400&amp;display=swap" rel="stylesheet">
-<link rel="stylesheet" href="book.css?v=20261012-answer-spacing">
+<link rel="stylesheet" href="book.css?v=20261012-reader-flow-2">
 </helmet>
 <div class="app">
   <header class="bar" aria-hidden="true"></header>
@@ -66,6 +67,9 @@
       <div id="coNib" aria-hidden="true" style="position: absolute; left: 0; top: 0; width: 7px; height: 7px; margin: -3px 0 0 -3px; border-radius: 50%; background: var(--pen); box-shadow: 0 0 0 2px rgba(26,111,168,.18); opacity: 0; pointer-events: none"></div>
     </div>
     <div class="co-actions">
+      <p id="coResume" hidden=""></p>
+      <button class="btn solid" id="coContinue" type="button" aria-describedby="coResume" hidden="">Continue reading</button>
+      <button class="btn" id="coRestart" type="button" hidden="">Start from beginning</button>
       <button class="btn solid" id="coBegin" type="button" style="font-size: 1rem; min-height: 52px; padding: 0 1.6em"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 2.5v11l9-5.5z" fill="currentColor"></path></svg>Begin</button>
     </div>
   </div>
@@ -96,7 +100,7 @@ class Component extends DCLogic {
     if (window.LewBook && window.LewBook.relayout) window.LewBook.relayout();
   }
   load(src) {
-    return new Promise((res, rej) => { const s = document.createElement('script'); s.src = src + '?v=20261012-answer-spacing'; s.onload = res; s.onerror = () => rej(new Error('Could not load ' + src)); document.head.appendChild(s); });
+    return new Promise((res, rej) => { const s = document.createElement('script'); s.src = src + '?v=20261012-reader-flow-2'; s.onload = res; s.onerror = () => rej(new Error('Could not load ' + src)); document.head.appendChild(s); });
   }
   async boot() {
     if (!window.BOOK) await this.load('book-data.js');
@@ -105,9 +109,11 @@ class Component extends DCLogic {
     window.LewBook.init();
     if (!window.ColdOpen) await this.load('coldopen.js');
     const h = (location.hash || '').slice(1);
-    const deep = h === 'end' || window.BOOK.PAGES.some(page => page.key === h);
-    window.ColdOpen.init({ enabled: deep ? false : (this.props.coldOpen ?? true) });
+    const deep = window.LewBook.isPageKey(h);
+    const enabled = !deep && (this.props.coldOpen ?? true);
+    window.ColdOpen.init({ enabled, resume: deep ? null : window.LewBook.getSavedReading() });
     if (deep) this.jump(h);
+    if (!enabled) window.LewBook.startRemembering();
   }
   jump(key) {
     if (!window.LewBook || !window.LewBook.jump) return;
