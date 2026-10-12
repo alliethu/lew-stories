@@ -19,7 +19,7 @@ if(window.BOOK_ALL && !PAGES.some(function(p){ return p.key === "all1"; })){
 }
 
 var reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-var wide = window.matchMedia("(min-width: 860px)");
+var wide = window.matchMedia("(min-width: 860px), (min-width: 540px) and (max-height: 500px)");
 var spreadsEl = document.getElementById("spreads");
 function esc(s){ return String(s).replace(/[&<>"]/g, function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]; }); }
 
@@ -76,6 +76,11 @@ PAGES.forEach(function(pg, i){
     '<div class="page right"><div class="inner all-list">'+(pg.run ? '<p class="running">'+esc(pg.run)+'</p>' : '')+pg.html+'</div><span class="folio" aria-hidden="true">'+(i*2+2)+'</span></div>' :
     '<div class="page left"><div class="art">'+arts.map(layerHTML).join("")+'<canvas class="fx" aria-hidden="true"></canvas><button class="enlarge" type="button" aria-label="View this picture larger"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M9.5 2.5h4v4M13.5 2.5 9 7M6.5 13.5h-4v-4M2.5 13.5 7 9" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div><p class="caption" aria-hidden="true"></p><span class="folio" aria-hidden="true">'+(i*2+1)+'</span></div>' +
     '<div class="page right"><div class="inner">'+right+'</div><span class="folio" aria-hidden="true">'+(i*2+2)+'</span></div>';
+  Array.prototype.forEach.call(s.querySelectorAll(".inner"), function(inner, side){
+    inner.tabIndex = 0;
+    inner.setAttribute("role", "region");
+    inner.setAttribute("aria-label", pg.leftHtml ? (side ? "Questions, right page" : "Questions, left page") : "Story text");
+  });
   spreadsEl.appendChild(s);
   if(!pg.clips) Array.prototype.forEach.call(s.querySelectorAll("[data-clip]"), function(el){ CLIPS.push({id:el.dataset.clip, page:i, art:pg.art, push:false, el:el, title:"Introduction"}); });
   (pg.clips || []).forEach(function(c){ CLIPS.push({id:c.id, page:i, art:c.art, push:!!c.push, artAt:c.artAt, el:s.querySelector('[data-clip="'+c.id+'"]'), title:pg.title}); });
@@ -139,46 +144,65 @@ function stacks(i){
 }
 
 /* ---------- sizing ---------- */
+var navHeight = 0;
 function size(){
   var vw = window.innerWidth, vh = window.innerHeight;
-  var bar = document.querySelector(".bar").offsetHeight, nav = document.querySelector(".nav").offsetHeight;
-  var availH = vh - bar - nav - 66;
+  var nav = document.querySelector(".nav"), stageStyle = getComputedStyle(document.querySelector(".stage"));
+  var coverStyle = getComputedStyle(document.querySelector(".cover")), navStyle = getComputedStyle(nav);
+  var rootStyle = getComputedStyle(document.documentElement);
+  function pixels(style, name){ return parseFloat(style[name]) || 0; }
+  var horizontalSpace = pixels(stageStyle, "paddingLeft") + pixels(stageStyle, "paddingRight") +
+    pixels(coverStyle, "paddingLeft") + pixels(coverStyle, "paddingRight");
+  navHeight = nav.offsetHeight;
+  var availH = vh - document.querySelector(".bar").offsetHeight - navHeight -
+    pixels(stageStyle, "paddingTop") - pixels(stageStyle, "paddingBottom") -
+    pixels(coverStyle, "paddingTop") - pixels(coverStyle, "paddingBottom") -
+    pixels(navStyle, "marginTop") - pixels(navStyle, "marginBottom") -
+    pixels(rootStyle, "paddingTop") - pixels(rootStyle, "paddingBottom");
   var w, h;
   if(wide.matches){
-    availH = vh - bar - nav - 29 - 44;
-    w = Math.min(2200, vw - 128);
-    h = Math.max(300, Math.min(availH, w / 2 * 1.12));   // pages up to square, as tall as the screen allows
+    w = Math.min(2200, vw - (vw >= 860 ? 128 : horizontalSpace));
+    h = Math.max(144, Math.min(availH, w / 2 * 1.12));
     w = Math.min(w, h * 2 / 0.62);
   } else {
-    w = vw - 24; h = Math.max(availH, 520);
+    w = vw - horizontalSpace; h = Math.max(availH, 220);
   }
   var pa = wide.matches ? (w / 2) / h : w / (h * 0.45);
   document.documentElement.setAttribute("data-fit", pa >= 1.25 ? "cover" : "contain");
   spreadsEl.style.setProperty("--bw", Math.round(w) + "px");
   spreadsEl.style.setProperty("--bh", Math.round(h) + "px");
   document.documentElement.style.setProperty("--bw", Math.round(w) + "px");
-  spreadsEl.style.fontSize = Math.max(15, Math.min(25, h / 37)).toFixed(1) + "px";
+  spreadsEl.style.fontSize = (Math.max(16, Math.min(25, h / 37)) / 16).toFixed(3) + "rem";
   fitAll();
 }
 function fitAll(){
   spreads.forEach(function(s){
-    var hid = s.hidden; if(hid){ s.hidden = false; s.style.visibility = "hidden"; }
     Array.prototype.forEach.call(s.querySelectorAll(".inner"), function(inner){
-    var k = 1, ql = inner.querySelector(".qlist"); inner.style.fontSize = ""; if(ql) ql.classList.remove("cols2");
-    while(inner.scrollHeight > inner.clientHeight && k > .5){
-      if(ql && k <= .84 && !ql.classList.contains("cols2")){ ql.classList.add("cols2"); k = 1; inner.style.fontSize = ""; continue; }
-      k -= .04; inner.style.fontSize = k.toFixed(2) + "em";
-    }
+      inner.style.fontSize = "";
+      var ql = inner.querySelector(".qlist"); if(ql) ql.classList.remove("cols2");
     });
-    if(hid){ s.hidden = true; s.style.visibility = ""; }
   });
 }
-if(document.fonts && document.fonts.ready) document.fonts.ready.then(function(){ fitAll(); });
+if(document.fonts && document.fonts.ready) document.fonts.ready.then(function(){ relayout(); });
 function relayout(){
   if(activeTurn){ var to = activeTurn.to; cancelTurn(); settle(to, false); }
-  size(); fx.resize();
+  size(); fx.resize(); positionMenu();
 }
 size(); window.addEventListener("resize", relayout);
+if(window.ResizeObserver){
+  var resizeFrame = 0;
+  function resizeForNav(){
+    if(resizeFrame) return;
+    resizeFrame = requestAnimationFrame(function(){
+      resizeFrame = 0;
+      if(activeTurn){ activeTurn.promise.then(resizeForNav); return; }
+      size(); fx.resize(); positionMenu();
+    });
+  }
+  new ResizeObserver(function(){
+    if(document.querySelector(".nav").offsetHeight !== navHeight) resizeForNav();
+  }).observe(document.querySelector(".nav"));
+}
 
 /* ---------- living art (particles) ---------- */
 var fx = (function(){
@@ -617,12 +641,21 @@ if(chSegs){
 }
 if(chMenu){
   chMenu.innerHTML = '<h2>Jump to a chapter</h2>' + CHS.map(function(c, k){ return '<button type="button" data-k="'+k+'"><span class="n">'+(c.n >= 1 && c.n <= 9 ? c.n : "")+'</span><span class="t">'+esc(c.name)+'</span></button>'; }).join("");
+  closeMenu();
   chMenu.addEventListener("click", function(e){ var b = e.target.closest("button[data-k]"); if(!b) return; closeMenu(); hop(CHS[+b.dataset.k].i); });
-  chBtn.addEventListener("click", function(){ if(chMenu.hidden){ chMenu.hidden = false; chBtn.setAttribute("aria-expanded","true"); var a = chMenu.querySelector('[aria-current="true"]') || chMenu.querySelector("button"); if(a) a.focus(); } else closeMenu(); });
+  chBtn.addEventListener("click", function(){ if(chMenu.hidden){ chMenu.hidden = false; chBtn.setAttribute("aria-expanded","true"); var a = chMenu.querySelector('[aria-current="true"]') || chMenu.querySelector("button"); if(a) a.focus(); positionMenu(); } else closeMenu(); });
   document.addEventListener("click", function(e){ if(!chMenu.hidden && !e.target.closest("#chMenu,#chBtn")) closeMenu(); });
   document.addEventListener("keydown", function(e){ if(e.key === "Escape" && !chMenu.hidden){ closeMenu(); chBtn.focus(); } });
 }
 function closeMenu(){ if(!chMenu) return; chMenu.hidden = true; chBtn.setAttribute("aria-expanded","false"); }
+function positionMenu(){
+  if(!chMenu || chMenu.hidden) return;
+  chMenu.style.transform = "";
+  var rect = chMenu.getBoundingClientRect(), root = getComputedStyle(document.documentElement);
+  var topInset = Math.max(12, parseFloat(root.paddingTop) || 0), bottomInset = Math.max(12, parseFloat(root.paddingBottom) || 0);
+  var top = Math.max(topInset, Math.min(rect.top, window.innerHeight - bottomInset - rect.height));
+  if(top !== rect.top) chMenu.style.transform = "translateY(" + (top - rect.top) + "px)";
+}
 /* progress = share of the chapter's listening time already heard (real audio durations; openers count their hold) */
 var DUR = Object.assign({}, B.AUDIO_DURATIONS || {}), waitStart = null;
 function itemDur(c){
