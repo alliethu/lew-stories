@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <script src="./support.js"></script>
 </head>
 <body>
@@ -12,7 +12,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
 <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;600&amp;family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&amp;family=Nothing+You+Could+Do&amp;family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,600;1,7..72,400&amp;display=swap" rel="stylesheet">
-<link rel="stylesheet" href="book.css">
+<link rel="stylesheet" href="book.css?v=20261012-responsive">
 </helmet>
 <div class="app">
   <header class="bar" aria-hidden="true"></header>
@@ -38,10 +38,12 @@
         <p class="lb-now"><span id="chName">Not a Storyteller, As a Rule</span><span class="lb-chn" id="chNum"></span><span class="lb-state" id="nowTitle" aria-live="polite"></span></p>
         <div class="lb-segs" id="chSegs"></div>
       </div>
-      <button class="lb-arrow" id="prevBtn" type="button"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M10.6 1.8 4.4 8l6.2 6.2 1.4-1.4L7.2 8l4.8-4.8z" fill="currentColor"></path></svg><span class="vh">Previous page</span></button>
-      <button class="lb-arrow" id="nextBtn" type="button"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M5.4 1.8 11.6 8l-6.2 6.2L4 12.8 8.8 8 4 3.2z" fill="currentColor"></path></svg><span class="vh">Next page</span></button>
-      <button class="lb-speed" id="spdBtn" type="button" title="Reading speed">1×</button>
-      <button class="lb-chapters" id="chBtn" type="button" aria-expanded="false" aria-controls="chMenu">Chapters</button>
+      <div class="lb-actions">
+        <button class="lb-arrow" id="prevBtn" type="button"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M10.6 1.8 4.4 8l6.2 6.2 1.4-1.4L7.2 8l4.8-4.8z" fill="currentColor"></path></svg><span class="vh">Previous page</span></button>
+        <button class="lb-arrow" id="nextBtn" type="button"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M5.4 1.8 11.6 8l-6.2 6.2L4 12.8 8.8 8 4 3.2z" fill="currentColor"></path></svg><span class="vh">Next page</span></button>
+        <button class="lb-speed" id="spdBtn" type="button" title="Reading speed">1×</button>
+        <button class="lb-chapters" id="chBtn" type="button" aria-expanded="false" aria-controls="chMenu">Chapters</button>
+      </div>
       <div class="lb-menu" id="chMenu" hidden=""></div>
       <span class="vh" id="count" aria-hidden="true"></span>
     </nav>
@@ -54,16 +56,16 @@
   </dialog>
   <div id="coldOpen" role="dialog" aria-modal="true" aria-label="Opening" style="position: fixed; inset: 0; z-index: 100; overflow: hidden; background: #efe2c4; transform-origin: 60% 55%">
     <img src="assets/img/0-00_title-pen.png" alt="Watercolor of his fountain pen resting on cream writing paper" style="position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 68% 50%">
-    <div id="coSheet" style="position: absolute; left: 6vw; top: 13vh; right: 6vw; bottom: 22vh">
+    <div id="coSheet">
       <p id="coTitle" style="margin: 0; display: flex; flex-direction: column; align-items: flex-start; gap: .05em; font-family: 'Nothing You Could Do', cursive; font-size: clamp(1.9rem, 4.8vw, 5.4rem); line-height: 1.25; color: var(--pen); transform: rotate(-2.5deg); transform-origin: 0 0">
-        <span class="co-l" style="display: block; white-space: nowrap; clip-path: inset(-30% 100% -50% -4%)">Not a Storyteller,</span>
-        <span class="co-l" style="display: block; white-space: nowrap; padding-left: .6em; clip-path: inset(-30% 100% -50% -4%)">As a Rule</span>
+        <span class="co-l" style="display: block; clip-path: inset(-30% 100% -50% -4%)">Not a Storyteller,</span>
+        <span class="co-l" style="display: block; padding-left: .6em; clip-path: inset(-30% 100% -50% -4%)">As a Rule</span>
       </p>
       <p id="coBy" style="margin: clamp(1rem, 3.4vh, 2.4rem) 0 .3rem 1.4vw; font-family: Literata, Georgia, serif; font-style: italic; font-size: clamp(.95rem, 1.35vw, 1.3rem); color: #5a5246; opacity: 0">The stories of</p>
       <div id="coSig" style="width: clamp(15rem, 27vw, 30rem); margin-left: .4vw"></div>
       <div id="coNib" aria-hidden="true" style="position: absolute; left: 0; top: 0; width: 7px; height: 7px; margin: -3px 0 0 -3px; border-radius: 50%; background: var(--pen); box-shadow: 0 0 0 2px rgba(26,111,168,.18); opacity: 0; pointer-events: none"></div>
     </div>
-    <div style="position: absolute; left: 6vw; bottom: 7vh; display: flex; gap: .7rem; flex-wrap: wrap; align-items: center">
+    <div class="co-actions">
       <button class="btn solid" id="coBegin" type="button" style="font-size: 1rem; min-height: 52px; padding: 0 1.6em"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 2.5v11l9-5.5z" fill="currentColor"></path></svg>Begin</button>
     </div>
   </div>
@@ -94,7 +96,7 @@ class Component extends DCLogic {
     if (window.LewBook && window.LewBook.relayout) window.LewBook.relayout();
   }
   load(src) {
-    return new Promise((res, rej) => { const s = document.createElement('script'); s.src = src + '?v=20261012'; s.onload = res; s.onerror = () => rej(new Error('Could not load ' + src)); document.head.appendChild(s); });
+    return new Promise((res, rej) => { const s = document.createElement('script'); s.src = src + '?v=20261012-responsive'; s.onload = res; s.onerror = () => rej(new Error('Could not load ' + src)); document.head.appendChild(s); });
   }
   async boot() {
     if (!window.BOOK) await this.load('book-data.js');
